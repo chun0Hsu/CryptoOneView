@@ -2,20 +2,17 @@
 import { ref } from 'vue'
 import { useAuthStore } from './stores/useAuthStore'
 import { useCredentialStore } from './stores/useCredentialStore'
+import { useWalletStore } from './stores/useWalletStore'
 import type { ExchangeName } from './types'
 
 const authStore = useAuthStore()
 const credentialStore = useCredentialStore()
+const walletStore = useWalletStore()
 
 const passwordInput = ref('')
 const message = ref('')
 
-// 新增憑證表單
-const selectedExchange = ref<ExchangeName>('binance')
-const apiKeyInput = ref('')
-const secretInput = ref('')
-
-// 設定密碼
+// === 認證相關 ===
 function handleSetPassword() {
   if (passwordInput.value.length < 6) {
     message.value = '❌ 密碼至少需要 6 個字元'
@@ -26,7 +23,6 @@ function handleSetPassword() {
   passwordInput.value = ''
 }
 
-// 解鎖
 function handleUnlock() {
   const success = authStore.unlock(passwordInput.value)
   if (success) {
@@ -37,13 +33,16 @@ function handleUnlock() {
   passwordInput.value = ''
 }
 
-// 鎖定
 function handleLock() {
   authStore.lock()
   message.value = '🔒 已鎖定'
 }
 
-// 新增憑證
+// === 交易所憑證相關 ===
+const selectedExchange = ref<ExchangeName>('binance')
+const apiKeyInput = ref('')
+const secretInput = ref('')
+
 function handleAddCredential() {
   if (!apiKeyInput.value || !secretInput.value) {
     message.value = '❌ 請輸入完整的 API Key 和 Secret'
@@ -60,35 +59,52 @@ function handleAddCredential() {
   }
 }
 
-// 測試解密
-function handleTestDecrypt(exchange: ExchangeName) {
+function handleRemoveCredential(exchange: ExchangeName) {
+  credentialStore.removeCredential(exchange)
+  message.value = `🗑️ ${exchange.toUpperCase()} 憑證已刪除`
+}
+
+// === 錢包地址相關 ===
+const walletSource = ref<'binance_hot' | 'okx_hot' | 'ledger_cold'>('ledger_cold')
+const walletChain = ref<'BTC' | 'ETH' | 'ADA'>('BTC')
+const walletAddress = ref('')
+const walletLabel = ref('')
+
+function handleAddWallet() {
+  if (!walletAddress.value) {
+    message.value = '❌ 請輸入錢包地址'
+    return
+  }
+  
   try {
-    const cred = credentialStore.getCredential(exchange)
-    if (cred) {
-      message.value = `✅ 解密成功！API Key: ${cred.apiKey.slice(0, 8)}...`
-    } else {
-      message.value = '❌ 找不到憑證'
-    }
+    walletStore.addAddress(
+      walletSource.value,
+      walletChain.value,
+      walletAddress.value,
+      walletLabel.value || undefined
+    )
+    message.value = `✅ ${walletSource.value} ${walletChain.value} 地址已新增`
+    walletAddress.value = ''
+    walletLabel.value = ''
   } catch (e: any) {
     message.value = `❌ ${e.message}`
   }
 }
 
-// 刪除憑證
-function handleRemove(exchange: ExchangeName) {
-  credentialStore.removeCredential(exchange)
-  message.value = `🗑️ ${exchange.toUpperCase()} 憑證已刪除`
+function handleRemoveWallet(id: string) {
+  walletStore.removeAddress(id)
+  message.value = '🗑️ 錢包地址已刪除'
 }
 </script>
 
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-    <div class="max-w-2xl mx-auto py-8 space-y-6">
+    <div class="max-w-4xl mx-auto py-8 space-y-6">
       
       <!-- 標題 -->
       <div class="text-center mb-8">
         <h1 class="text-4xl font-bold text-white mb-2">CryptoOneView</h1>
-        <p class="text-white/80">憑證管理測試</p>
+        <p class="text-white/80">Store 功能測試</p>
       </div>
 
       <!-- 認證狀態卡片 -->
@@ -144,78 +160,139 @@ function handleRemove(exchange: ExchangeName) {
         </div>
       </div>
 
-      <!-- 新增憑證卡片（僅在解鎖時顯示） -->
-      <div v-if="authStore.isUnlocked" class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
-        <h2 class="text-xl font-bold text-gray-800">新增交易所憑證</h2>
+      <div v-if="authStore.isUnlocked" class="grid md:grid-cols-2 gap-6">
         
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">選擇交易所</label>
-          <select 
-            v-model="selectedExchange"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="binance">Binance</option>
-            <option value="okx">OKX</option>
-          </select>
-        </div>
+        <!-- 左側：交易所憑證 -->
+        <div class="space-y-6">
+          <!-- 新增憑證 -->
+          <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+            <h2 class="text-xl font-bold text-gray-800">交易所 API Key</h2>
+            
+            <select 
+              v-model="selectedExchange"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="binance">Binance CEX</option>
+              <option value="okx">OKX CEX</option>
+            </select>
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">API Key</label>
-          <input 
-            v-model="apiKeyInput"
-            type="text"
-            placeholder="輸入 API Key"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+            <input 
+              v-model="apiKeyInput"
+              type="text"
+              placeholder="API Key"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
 
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-2">Secret Key</label>
-          <input 
-            v-model="secretInput"
-            type="password"
-            placeholder="輸入 Secret Key"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
+            <input 
+              v-model="secretInput"
+              type="password"
+              placeholder="Secret Key"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
 
-        <button 
-          @click="handleAddCredential"
-          class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-        >
-          儲存憑證（AES-256加密）
-        </button>
-      </div>
+            <button 
+              @click="handleAddCredential"
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
+            >
+              儲存憑證
+            </button>
+          </div>
 
-      <!-- 已儲存的憑證列表 -->
-      <div v-if="authStore.isUnlocked && credentialStore.credentials.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">已儲存的憑證</h2>
-        <div class="space-y-3">
-          <div 
-            v-for="cred in credentialStore.credentials" 
-            :key="cred.id"
-            class="flex items-center justify-between p-4 bg-gray-50 rounded-lg"
-          >
-            <div>
-              <p class="font-semibold text-gray-800">{{ cred.exchange.toUpperCase() }}</p>
-              <p class="text-xs text-gray-500">ID: {{ cred.id }}</p>
-            </div>
-            <div class="flex gap-2">
-              <button 
-                @click="handleTestDecrypt(cred.exchange)"
-                class="px-3 py-1 bg-green-500 hover:bg-green-600 text-white text-sm rounded transition"
+          <!-- 已儲存的憑證 -->
+          <div v-if="credentialStore.credentials.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">已儲存憑證</h3>
+            <div class="space-y-3">
+              <div 
+                v-for="cred in credentialStore.credentials" 
+                :key="cred.id"
+                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
               >
-                測試解密
-              </button>
-              <button 
-                @click="handleRemove(cred.exchange)"
-                class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition"
-              >
-                刪除
-              </button>
+                <span class="font-semibold">{{ cred.exchange.toUpperCase() }}</span>
+                <button 
+                  @click="handleRemoveCredential(cred.exchange)"
+                  class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition"
+                >
+                  刪除
+                </button>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- 右側：錢包地址 -->
+        <div class="space-y-6">
+          <!-- 新增錢包地址 -->
+          <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
+            <h2 class="text-xl font-bold text-gray-800">錢包地址</h2>
+            
+            <select 
+              v-model="walletSource"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="binance_hot">Binance Hot</option>
+              <option value="okx_hot">OKX Hot</option>
+              <option value="ledger_cold">Ledger Cold</option>
+            </select>
+
+            <select 
+              v-model="walletChain"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="BTC">Bitcoin (BTC)</option>
+              <option value="ETH">Ethereum (ETH)</option>
+              <option value="ADA">Cardano (ADA)</option>
+            </select>
+
+            <input 
+              v-model="walletAddress"
+              type="text"
+              placeholder="錢包地址"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <input 
+              v-model="walletLabel"
+              type="text"
+              placeholder="標籤（選填）"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+
+            <button 
+              @click="handleAddWallet"
+              class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition"
+            >
+              新增地址
+            </button>
+          </div>
+
+          <!-- 已儲存的錢包地址 -->
+          <div v-if="walletStore.addresses.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">已儲存地址</h3>
+            <div class="space-y-3">
+              <div 
+                v-for="addr in walletStore.addresses" 
+                :key="addr.id"
+                class="p-3 bg-gray-50 rounded-lg"
+              >
+                <div class="flex items-center justify-between mb-2">
+                  <div>
+                    <span class="font-semibold text-sm">{{ addr.source.replace('_', ' ').toUpperCase() }}</span>
+                    <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ addr.chain }}</span>
+                  </div>
+                  <button 
+                    @click="handleRemoveWallet(addr.id)"
+                    class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition"
+                  >
+                    刪除
+                  </button>
+                </div>
+                <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
+                <p v-if="addr.label" class="text-xs text-gray-500 mt-1">{{ addr.label }}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       <!-- 訊息顯示 -->

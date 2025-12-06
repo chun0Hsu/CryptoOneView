@@ -1,7 +1,12 @@
-// 資料來源類型
-export type SourceType = 'exchange' | 'ledger'
+// 資料來源類型（5個來源）
+export type SourceType =
+  | 'binance_cex'    // Binance 交易所
+  | 'okx_cex'        // OKX 交易所
+  | 'binance_hot'    // Binance 熱錢包
+  | 'okx_hot'        // OKX 熱錢包
+  | 'ledger_cold'    // Ledger 冷錢包
 
-// 交易所名稱（MVP 只支援 Binance 和 OKX）
+// 交易所名稱（僅用於 CEX API）
 export type ExchangeName = 'binance' | 'okx'
 
 // 支援的幣種
@@ -12,25 +17,15 @@ export interface Asset {
   symbol: CryptoSymbol
   amount: number
   source: SourceType
-  sourceName: string      // 例如：'Binance CEX', 'OKX CEX', 'Ledger Cold'
   chain?: string          // 僅用於 USDT/USDC (ERC-20, TRC-20, Polygon...)
 }
 
-// 加密的交易所 API 金鑰
+// 加密的交易所 API 金鑰（僅用於 CEX）
 export interface EncryptedCredential {
   id: string
   exchange: ExchangeName
   encryptedApiKey: string     // AES-256 加密的 API Key
   encryptedSecret: string     // AES-256 加密的 Secret
-  createdAt: number
-}
-
-// Ledger 冷錢包地址
-export interface LedgerAddress {
-  id: string
-  chain: 'BTC' | 'ETH' | 'ADA'
-  address: string
-  label?: string
   createdAt: number
 }
 
