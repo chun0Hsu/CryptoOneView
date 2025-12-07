@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from './stores/useAuthStore'
 import { useCredentialStore } from './stores/useCredentialStore'
 import { useWalletStore } from './stores/useWalletStore'
+import { fetchExchangeBalance, type ExchangeBalance } from './services/exchangeService'
 import type { ExchangeName } from './types'
 
 const authStore = useAuthStore()
@@ -11,6 +12,10 @@ const walletStore = useWalletStore()
 
 const passwordInput = ref('')
 const message = ref('')
+
+// 查詢結果
+const queryResult = ref<ExchangeBalance[] | null>(null)
+const isQuerying = ref(false)
 
 // === 認證相關 ===
 function handleSetPassword() {
@@ -35,6 +40,7 @@ function handleUnlock() {
 
 function handleLock() {
   authStore.lock()
+  queryResult.value = null
   message.value = '🔒 已鎖定'
 }
 
@@ -48,7 +54,7 @@ function handleAddCredential() {
     message.value = '❌ 請輸入完整的 API Key 和 Secret'
     return
   }
-  
+
   try {
     credentialStore.setCredential(selectedExchange.value, apiKeyInput.value, secretInput.value)
     message.value = `✅ ${selectedExchange.value.toUpperCase()} 憑證已加密儲存`
@@ -64,6 +70,35 @@ function handleRemoveCredential(exchange: ExchangeName) {
   message.value = `🗑️ ${exchange.toUpperCase()} 憑證已刪除`
 }
 
+// === 測試查詢交易所餘額 ===
+async function handleQueryBalance(exchange: ExchangeName) {
+  queryResult.value = null
+  isQuerying.value = true
+  message.value = '🔄 查詢中...'
+
+  try {
+    const cred = credentialStore.getCredential(exchange)
+    if (!cred) {
+      message.value = `❌ 找不到 ${exchange.toUpperCase()} 的憑證`
+      isQuerying.value = false
+      return
+    }
+
+    const result = await fetchExchangeBalance(exchange, cred.apiKey, cred.secret)
+
+    if (result.success) {
+      queryResult.value = result.balances
+      message.value = `✅ 查詢成功！找到 ${result.balances.length} 種幣`
+    } else {
+      message.value = `❌ 查詢失敗：${result.error}`
+    }
+  } catch (e: any) {
+    message.value = `❌ 查詢錯誤：${e.message}`
+  } finally {
+    isQuerying.value = false
+  }
+}
+
 // === 錢包地址相關 ===
 const walletSource = ref<'binance_hot' | 'okx_hot' | 'ledger_cold'>('ledger_cold')
 const walletChain = ref<'BTC' | 'ETH' | 'ADA'>('BTC')
@@ -75,7 +110,7 @@ function handleAddWallet() {
     message.value = '❌ 請輸入錢包地址'
     return
   }
-  
+
   try {
     walletStore.addAddress(
       walletSource.value,
@@ -100,7 +135,7 @@ function handleRemoveWallet(id: string) {
 <template>
   <div class="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
     <div class="max-w-4xl mx-auto py-8 space-y-6">
-      
+
       <!-- 標題 -->
       <div class="text-center mb-8">
         <h1 class="text-4xl font-bold text-white mb-2">CryptoOneView</h1>
@@ -118,82 +153,56 @@ function handleRemoveWallet(id: string) {
         <!-- 首次設定密碼 -->
         <div v-if="!authStore.passwordHash" class="space-y-4">
           <p class="text-sm text-gray-600">尚未設定密碼，請設定解鎖密碼：</p>
-          <input 
-            v-model="passwordInput"
-            type="password"
-            placeholder="輸入密碼（至少6字元）"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <button 
-            @click="handleSetPassword"
-            class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-          >
+          <input v-model="passwordInput" type="password" placeholder="輸入密碼（至少6字元）"
+            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
+          <button @click="handleSetPassword"
+            class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
             設定密碼
           </button>
         </div>
 
         <!-- 解鎖介面 -->
         <div v-else-if="!authStore.isUnlocked" class="space-y-4">
-          <input 
-            v-model="passwordInput"
-            type="password"
-            placeholder="輸入密碼解鎖"
+          <input v-model="passwordInput" type="password" placeholder="輸入密碼解鎖"
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @keyup.enter="handleUnlock"
-          />
-          <button 
-            @click="handleUnlock"
-            class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-          >
+            @keyup.enter="handleUnlock" />
+          <button @click="handleUnlock"
+            class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">
             解鎖
           </button>
         </div>
 
         <!-- 已解鎖：鎖定按鈕 -->
         <div v-else>
-          <button 
-            @click="handleLock"
-            class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-          >
+          <button @click="handleLock"
+            class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">
             鎖定
           </button>
         </div>
       </div>
 
       <div v-if="authStore.isUnlocked" class="grid md:grid-cols-2 gap-6">
-        
+
         <!-- 左側：交易所憑證 -->
         <div class="space-y-6">
           <!-- 新增憑證 -->
           <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
             <h2 class="text-xl font-bold text-gray-800">交易所 API Key</h2>
-            
-            <select 
-              v-model="selectedExchange"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+
+            <select v-model="selectedExchange"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="binance">Binance CEX</option>
               <option value="okx">OKX CEX</option>
             </select>
 
-            <input 
-              v-model="apiKeyInput"
-              type="text"
-              placeholder="API Key"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input v-model="apiKeyInput" type="text" placeholder="API Key"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
 
-            <input 
-              v-model="secretInput"
-              type="password"
-              placeholder="Secret Key"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input v-model="secretInput" type="password" placeholder="Secret Key"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
 
-            <button 
-              @click="handleAddCredential"
-              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-            >
+            <button @click="handleAddCredential"
+              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
               儲存憑證
             </button>
           </div>
@@ -202,18 +211,31 @@ function handleRemoveWallet(id: string) {
           <div v-if="credentialStore.credentials.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4">已儲存憑證</h3>
             <div class="space-y-3">
-              <div 
-                v-for="cred in credentialStore.credentials" 
-                :key="cred.id"
-                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-              >
+              <div v-for="cred in credentialStore.credentials" :key="cred.id"
+                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                 <span class="font-semibold">{{ cred.exchange.toUpperCase() }}</span>
-                <button 
-                  @click="handleRemoveCredential(cred.exchange)"
-                  class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition"
-                >
-                  刪除
-                </button>
+                <div class="flex gap-2">
+                  <button @click="handleQueryBalance(cred.exchange)" :disabled="isQuerying"
+                    class="px-3 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-sm rounded transition">
+                    {{ isQuerying ? '查詢中...' : '查詢餘額' }}
+                  </button>
+                  <button @click="handleRemoveCredential(cred.exchange)"
+                    class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition">
+                    刪除
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 查詢結果顯示 -->
+          <div v-if="queryResult && queryResult.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">查詢結果</h3>
+            <div class="space-y-2">
+              <div v-for="balance in queryResult" :key="balance.symbol"
+                class="flex justify-between p-3 bg-green-50 rounded-lg">
+                <span class="font-semibold">{{ balance.symbol }}</span>
+                <span class="text-gray-700">{{ balance.total.toFixed(8) }}</span>
               </div>
             </div>
           </div>
@@ -224,43 +246,29 @@ function handleRemoveWallet(id: string) {
           <!-- 新增錢包地址 -->
           <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
             <h2 class="text-xl font-bold text-gray-800">錢包地址</h2>
-            
-            <select 
-              v-model="walletSource"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+
+            <select v-model="walletSource"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="binance_hot">Binance Hot</option>
               <option value="okx_hot">OKX Hot</option>
               <option value="ledger_cold">Ledger Cold</option>
             </select>
 
-            <select 
-              v-model="walletChain"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
+            <select v-model="walletChain"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
               <option value="BTC">Bitcoin (BTC)</option>
               <option value="ETH">Ethereum (ETH)</option>
               <option value="ADA">Cardano (ADA)</option>
             </select>
 
-            <input 
-              v-model="walletAddress"
-              type="text"
-              placeholder="錢包地址"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input v-model="walletAddress" type="text" placeholder="錢包地址"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
 
-            <input 
-              v-model="walletLabel"
-              type="text"
-              placeholder="標籤（選填）"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+            <input v-model="walletLabel" type="text" placeholder="標籤（選填）"
+              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
 
-            <button 
-              @click="handleAddWallet"
-              class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition"
-            >
+            <button @click="handleAddWallet"
+              class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
               新增地址
             </button>
           </div>
@@ -269,20 +277,14 @@ function handleRemoveWallet(id: string) {
           <div v-if="walletStore.addresses.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
             <h3 class="text-lg font-bold text-gray-800 mb-4">已儲存地址</h3>
             <div class="space-y-3">
-              <div 
-                v-for="addr in walletStore.addresses" 
-                :key="addr.id"
-                class="p-3 bg-gray-50 rounded-lg"
-              >
+              <div v-for="addr in walletStore.addresses" :key="addr.id" class="p-3 bg-gray-50 rounded-lg">
                 <div class="flex items-center justify-between mb-2">
                   <div>
                     <span class="font-semibold text-sm">{{ addr.source.replace('_', ' ').toUpperCase() }}</span>
                     <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ addr.chain }}</span>
                   </div>
-                  <button 
-                    @click="handleRemoveWallet(addr.id)"
-                    class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition"
-                  >
+                  <button @click="handleRemoveWallet(addr.id)"
+                    class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition">
                     刪除
                   </button>
                 </div>
@@ -297,7 +299,8 @@ function handleRemoveWallet(id: string) {
 
       <!-- 訊息顯示 -->
       <div v-if="message" class="bg-white rounded-lg shadow p-4">
-        <p class="text-center font-medium" :class="message.includes('✅') ? 'text-green-600' : message.includes('❌') ? 'text-red-600' : 'text-gray-600'">
+        <p class="text-center font-medium"
+          :class="message.includes('✅') ? 'text-green-600' : message.includes('❌') ? 'text-red-600' : 'text-gray-600'">
           {{ message }}
         </p>
       </div>
