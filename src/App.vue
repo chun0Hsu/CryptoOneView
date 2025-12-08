@@ -6,6 +6,7 @@ import { useWalletStore } from './stores/useWalletStore'
 import { fetchExchangeBalance, type ExchangeBalance } from './services/exchangeService'
 import type { ExchangeName, CryptoSymbol } from './types'
 import { fetchAllPrices, type PriceData } from './services/priceService'
+import { fetchChainBalance, type ChainBalanceResult } from './services/chainService'
 
 
 const authStore = useAuthStore()
@@ -18,6 +19,11 @@ const message = ref('')
 // 價格查詢結果
 const priceResult = ref<Map<CryptoSymbol, PriceData> | null>(null)
 const isQueryingPrice = ref(false)
+
+// 鏈上查詢結果
+const chainQueryResult = ref<ChainBalanceResult | null>(null)
+const isQueryingChain = ref(false)
+
 
 // === 認證相關 ===
 function handleSetPassword() {
@@ -146,6 +152,29 @@ async function handleQueryPrice() {
     message.value = `❌ 查詢失敗：${e.message}`
   } finally {
     isQueryingPrice.value = false
+  }
+}
+
+// === 鏈上查詢測試 ===
+async function handleQueryChain(address: string, chain: 'BTC' | 'ETH' | 'ADA') {
+  chainQueryResult.value = null
+  isQueryingChain.value = true
+  message.value = `🔄 查詢 ${chain} 地址餘額中...`
+
+  try {
+    const result = await fetchChainBalance(chain, address)
+    chainQueryResult.value = result
+
+    if (result.success && result.data) {
+      const totalBalance = result.data.balances.reduce((sum, b) => sum + b.amount, 0)
+      message.value = `✅ ${chain} 查詢成功！餘額：${totalBalance.toFixed(8)}`
+    } else {
+      message.value = `❌ ${result.error}`
+    }
+  } catch (e: any) {
+    message.value = `❌ 查詢錯誤：${e.message}`
+  } finally {
+    isQueryingChain.value = false
   }
 }
 </script>
@@ -308,6 +337,35 @@ async function handleQueryPrice() {
                 </div>
                 <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
                 <p v-if="addr.label" class="text-xs text-gray-500 mt-1">{{ addr.label }}</p>
+              </div>
+            </div>
+            <!-- 測試查詢鏈上餘額 -->
+            <div class="bg-white rounded-2xl shadow-2xl p-6">
+              <h3 class="text-lg font-bold text-gray-800 mb-4">測試鏈上查詢</h3>
+              <div class="space-y-3">
+                <div v-for="addr in walletStore.addresses" :key="addr.id" class="p-3 bg-purple-50 rounded-lg">
+                  <div class="flex items-center justify-between mb-2">
+                    <span class="font-semibold text-sm">{{ addr.chain }}</span>
+                    <button @click="handleQueryChain(addr.address, addr.chain)" :disabled="isQueryingChain"
+                      class="px-3 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-xs rounded transition">
+                      {{ isQueryingChain ? '查詢中...' : '查詢餘額' }}
+                    </button>
+                  </div>
+                  <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
+                </div>
+              </div>
+
+              <!-- 查詢結果 -->
+              <div v-if="chainQueryResult && chainQueryResult.success && chainQueryResult.data"
+                class="mt-4 p-4 bg-green-50 rounded-lg">
+                <h4 class="font-bold text-sm mb-2">查詢結果：{{ chainQueryResult.data.chain }}</h4>
+                <div class="space-y-1">
+                  <div v-for="balance in chainQueryResult.data.balances" :key="balance.symbol"
+                    class="flex justify-between text-sm">
+                    <span>{{ balance.symbol }}:</span>
+                    <span class="font-mono">{{ balance.amount.toFixed(8) }}</span>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
