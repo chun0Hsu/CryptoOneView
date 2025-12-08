@@ -4,7 +4,9 @@ import { useAuthStore } from './stores/useAuthStore'
 import { useCredentialStore } from './stores/useCredentialStore'
 import { useWalletStore } from './stores/useWalletStore'
 import { fetchExchangeBalance, type ExchangeBalance } from './services/exchangeService'
-import type { ExchangeName } from './types'
+import type { ExchangeName, CryptoSymbol } from './types'
+import { fetchAllPrices, type PriceData } from './services/priceService'
+
 
 const authStore = useAuthStore()
 const credentialStore = useCredentialStore()
@@ -13,9 +15,9 @@ const walletStore = useWalletStore()
 const passwordInput = ref('')
 const message = ref('')
 
-// 查詢結果
-const queryResult = ref<ExchangeBalance[] | null>(null)
-const isQuerying = ref(false)
+// 價格查詢結果
+const priceResult = ref<Map<CryptoSymbol, PriceData> | null>(null)
+const isQueryingPrice = ref(false)
 
 // === 認證相關 ===
 function handleSetPassword() {
@@ -129,6 +131,22 @@ function handleAddWallet() {
 function handleRemoveWallet(id: string) {
   walletStore.removeAddress(id)
   message.value = '🗑️ 錢包地址已刪除'
+}
+
+// === 價格查詢 ===
+async function handleQueryPrice() {
+  isQueryingPrice.value = true
+  message.value = '🔄 查詢價格中...'
+
+  try {
+    const prices = await fetchAllPrices()
+    priceResult.value = prices
+    message.value = `✅ 查詢成功！取得 ${prices.size} 個幣種價格`
+  } catch (e: any) {
+    message.value = `❌ 查詢失敗：${e.message}`
+  } finally {
+    isQueryingPrice.value = false
+  }
 }
 </script>
 
@@ -305,6 +323,25 @@ function handleRemoveWallet(id: string) {
         </p>
       </div>
 
+    </div>
+    <!-- 價格查詢測試 -->
+    <div v-if="authStore.isUnlocked" class="bg-white rounded-2xl shadow-2xl p-6">
+      <h2 class="text-xl font-bold text-gray-800 mb-4">價格查詢測試</h2>
+      <button @click="handleQueryPrice" :disabled="isQueryingPrice"
+        class="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition">
+        {{ isQueryingPrice ? '查詢中...' : '查詢所有幣種價格（CoinGecko）' }}
+      </button>
+
+      <!-- 價格結果 -->
+      <div v-if="priceResult && priceResult.size > 0" class="mt-4 space-y-2">
+        <div v-for="[symbol, price] in priceResult" :key="symbol"
+          class="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
+          <span class="font-semibold">{{ symbol }}</span>
+          <span class="text-lg text-gray-700">${{ price.priceUSD.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2 }) }}</span>
+        </div>
+      </div>
     </div>
   </div>
 </template>
