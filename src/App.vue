@@ -3,6 +3,7 @@ import { ref } from 'vue'
 import { useAuthStore } from './stores/useAuthStore'
 import { useCredentialStore } from './stores/useCredentialStore'
 import { useWalletStore } from './stores/useWalletStore'
+import { useAssetStore } from './stores/useAssetStore'
 import { fetchExchangeBalance, type ExchangeBalance } from './services/exchangeService'
 import type { ExchangeName, CryptoSymbol } from './types'
 import { fetchAllPrices, type PriceData } from './services/priceService'
@@ -12,9 +13,14 @@ import { fetchChainBalance, type ChainBalanceResult } from './services/chainServ
 const authStore = useAuthStore()
 const credentialStore = useCredentialStore()
 const walletStore = useWalletStore()
+const assetStore = useAssetStore()
 
 const passwordInput = ref('')
 const message = ref('')
+
+// CEX查詢結果
+const queryResult = ref<ExchangeBalance[] | null>(null)
+const isQuerying = ref(false)
 
 // 價格查詢結果
 const priceResult = ref<Map<CryptoSymbol, PriceData> | null>(null)
@@ -177,6 +183,18 @@ async function handleQueryChain(address: string, chain: 'BTC' | 'ETH' | 'ADA') {
     isQueryingChain.value = false
   }
 }
+// === 整合查詢測試 ===
+async function handleRefreshAssets() {
+  message.value = '🔄 整合查詢所有資產中...'
+  await assetStore.refresh()
+
+  if (assetStore.errors.length > 0) {
+    message.value = `⚠️ 查詢完成，但有 ${assetStore.errors.length} 個錯誤`
+  } else {
+    message.value = `✅ 查詢完成！總資產價值：$${assetStore.totalValueUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+  }
+}
+
 </script>
 
 <template>
@@ -275,9 +293,9 @@ async function handleQueryChain(address: string, chain: 'BTC' | 'ETH' | 'ADA') {
             </div>
           </div>
 
-          <!-- 查詢結果顯示 -->
+          <!-- 單一交易所查詢結果顯示 -->
           <div v-if="queryResult && queryResult.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">查詢結果</h3>
+            <h3 class="text-lg font-bold text-gray-800 mb-4">單一交易所查詢結果</h3>
             <div class="space-y-2">
               <div v-for="balance in queryResult" :key="balance.symbol"
                 class="flex justify-between p-3 bg-green-50 rounded-lg">
@@ -339,38 +357,120 @@ async function handleQueryChain(address: string, chain: 'BTC' | 'ETH' | 'ADA') {
                 <p v-if="addr.label" class="text-xs text-gray-500 mt-1">{{ addr.label }}</p>
               </div>
             </div>
-            <!-- 測試查詢鏈上餘額 -->
-            <div class="bg-white rounded-2xl shadow-2xl p-6">
-              <h3 class="text-lg font-bold text-gray-800 mb-4">測試鏈上查詢</h3>
-              <div class="space-y-3">
-                <div v-for="addr in walletStore.addresses" :key="addr.id" class="p-3 bg-purple-50 rounded-lg">
-                  <div class="flex items-center justify-between mb-2">
-                    <span class="font-semibold text-sm">{{ addr.chain }}</span>
-                    <button @click="handleQueryChain(addr.address, addr.chain)" :disabled="isQueryingChain"
-                      class="px-3 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-xs rounded transition">
-                      {{ isQueryingChain ? '查詢中...' : '查詢餘額' }}
-                    </button>
-                  </div>
-                  <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
-                </div>
-              </div>
+          </div>
 
-              <!-- 查詢結果 -->
-              <div v-if="chainQueryResult && chainQueryResult.success && chainQueryResult.data"
-                class="mt-4 p-4 bg-green-50 rounded-lg">
-                <h4 class="font-bold text-sm mb-2">查詢結果：{{ chainQueryResult.data.chain }}</h4>
-                <div class="space-y-1">
-                  <div v-for="balance in chainQueryResult.data.balances" :key="balance.symbol"
-                    class="flex justify-between text-sm">
-                    <span>{{ balance.symbol }}:</span>
-                    <span class="font-mono">{{ balance.amount.toFixed(8) }}</span>
-                  </div>
+          <!-- 測試查詢鏈上餘額 -->
+          <div v-if="walletStore.addresses.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
+            <h3 class="text-lg font-bold text-gray-800 mb-4">測試鏈上查詢</h3>
+            <div class="space-y-3">
+              <div v-for="addr in walletStore.addresses" :key="addr.id" class="p-3 bg-purple-50 rounded-lg">
+                <div class="flex items-center justify-between mb-2">
+                  <span class="font-semibold text-sm">{{ addr.chain }}</span>
+                  <button @click="handleQueryChain(addr.address, addr.chain)" :disabled="isQueryingChain"
+                    class="px-3 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-xs rounded transition">
+                    {{ isQueryingChain ? '查詢中...' : '查詢餘額' }}
+                  </button>
+                </div>
+                <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
+              </div>
+            </div>
+
+            <!-- 查詢結果 -->
+            <div v-if="chainQueryResult && chainQueryResult.success && chainQueryResult.data"
+              class="mt-4 p-4 bg-green-50 rounded-lg">
+              <h4 class="font-bold text-sm mb-2">查詢結果：{{ chainQueryResult.data.chain }}</h4>
+              <div class="space-y-1">
+                <div v-for="balance in chainQueryResult.data.balances" :key="balance.symbol"
+                  class="flex justify-between text-sm">
+                  <span>{{ balance.symbol }}:</span>
+                  <span class="font-mono">{{ balance.amount.toFixed(8) }}</span>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
+      </div>
+
+      <!-- 價格查詢測試 -->
+      <div v-if="authStore.isUnlocked" class="bg-white rounded-2xl shadow-2xl p-6">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">價格查詢測試</h2>
+        <button @click="handleQueryPrice" :disabled="isQueryingPrice"
+          class="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition">
+          {{ isQueryingPrice ? '查詢中...' : '查詢所有幣種價格（CoinGecko）' }}
+        </button>
+
+        <!-- 價格結果 -->
+        <div v-if="priceResult && priceResult.size > 0" class="mt-4 space-y-2">
+          <div v-for="[symbol, price] in priceResult" :key="symbol"
+            class="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
+            <span class="font-semibold">{{ symbol }}</span>
+            <span class="text-lg text-gray-700">${{ price.priceUSD.toLocaleString('en-US', {
+              minimumFractionDigits: 2,
+              maximumFractionDigits: 2 }) }}</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- 整合查詢測試 -->
+      <div v-if="authStore.isUnlocked"
+        class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl shadow-2xl p-6 text-white">
+        <h2 class="text-2xl font-bold mb-4">🚀 整合查詢所有資產</h2>
+        <p class="text-white/90 mb-4 text-sm">
+          將查詢所有已設定的交易所 API 和錢包地址，並計算總資產價值
+        </p>
+        <button @click="handleRefreshAssets" :disabled="assetStore.isLoading"
+          class="w-full bg-white hover:bg-gray-100 disabled:bg-gray-300 text-purple-600 font-bold py-3 px-6 rounded-lg transition shadow-lg">
+          {{ assetStore.isLoading ? '查詢中...' : '🔄 Refresh 全部資產' }}
+        </button>
+
+        <!-- 查詢結果 -->
+        <div v-if="assetStore.lastUpdated" class="mt-6 space-y-4">
+          <!-- 總資產 -->
+          <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4">
+            <p class="text-sm text-white/80 mb-1">總資產價值</p>
+            <p class="text-3xl font-bold">${{ assetStore.totalValueUSD.toLocaleString('en-US', {
+              minimumFractionDigits:
+                2, maximumFractionDigits: 2 }) }}</p>
+            <p class="text-xs text-white/70 mt-2">
+              上次更新：{{ new Date(assetStore.lastUpdated).toLocaleTimeString('zh-TW') }}
+            </p>
+          </div>
+
+          <!-- 資產明細 -->
+          <div v-if="assetStore.assetSummaries.length > 0" class="bg-white/20 backdrop-blur-sm rounded-xl p-4">
+            <h3 class="font-bold mb-3">資產明細</h3>
+            <div class="space-y-2">
+              <div v-for="summary in assetStore.assetSummaries" :key="summary.symbol"
+                class="bg-white/10 rounded-lg p-3">
+                <div class="flex justify-between items-center mb-2">
+                  <span class="font-bold text-lg">{{ summary.symbol }}</span>
+                  <span class="text-sm">{{ summary.percentage.toFixed(2) }}%</span>
+                </div>
+                <div class="flex justify-between text-sm">
+                  <span>數量：{{ summary.totalAmount.toFixed(8) }}</span>
+                  <span>價值：${{ summary.valueUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</span>
+                </div>
+                <!-- 來源明細 -->
+                <div class="mt-2 text-xs text-white/70 space-y-1">
+                  <div v-for="source in summary.sources" :key="source.source">
+                    {{ source.source }}: {{ source.amount.toFixed(8) }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- 錯誤訊息 -->
+          <div v-if="assetStore.errors.length > 0" class="bg-red-500/30 backdrop-blur-sm rounded-xl p-4">
+            <h3 class="font-bold mb-2">⚠️ 錯誤訊息</h3>
+            <div class="space-y-1 text-sm">
+              <p v-for="(error, index) in assetStore.errors" :key="index">
+                • {{ error }}
+              </p>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- 訊息顯示 -->
@@ -382,24 +482,6 @@ async function handleQueryChain(address: string, chain: 'BTC' | 'ETH' | 'ADA') {
       </div>
 
     </div>
-    <!-- 價格查詢測試 -->
-    <div v-if="authStore.isUnlocked" class="bg-white rounded-2xl shadow-2xl p-6">
-      <h2 class="text-xl font-bold text-gray-800 mb-4">價格查詢測試</h2>
-      <button @click="handleQueryPrice" :disabled="isQueryingPrice"
-        class="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition">
-        {{ isQueryingPrice ? '查詢中...' : '查詢所有幣種價格（CoinGecko）' }}
-      </button>
-
-      <!-- 價格結果 -->
-      <div v-if="priceResult && priceResult.size > 0" class="mt-4 space-y-2">
-        <div v-for="[symbol, price] in priceResult" :key="symbol"
-          class="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
-          <span class="font-semibold">{{ symbol }}</span>
-          <span class="text-lg text-gray-700">${{ price.priceUSD.toLocaleString('en-US', {
-            minimumFractionDigits: 2,
-            maximumFractionDigits: 2 }) }}</span>
-        </div>
-      </div>
-    </div>
   </div>
 </template>
+

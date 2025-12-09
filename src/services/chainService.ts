@@ -51,28 +51,35 @@ async function fetchBTCBalance(address: string): Promise<ChainBalanceResult> {
 
 /**
  * 查詢 ETH 地址餘額
- * 使用 Etherscan API（免費額度，但建議申請 API Key）
+ * 使用 Etherscan API（免費額度，但有 rate limit）
  */
 async function fetchETHBalance(address: string): Promise<ChainBalanceResult> {
   try {
-    // 使用 Etherscan 免費 API（有 rate limit）
+    // 驗證地址格式
+    if (!address.startsWith('0x') || address.length !== 42) {
+      throw new Error('無效的 ETH 地址格式')
+    }
+
+    // 使用 Etherscan 免費 API
     const url = `https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest`
     const response = await fetch(url)
 
     if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`)
+      throw new Error(`HTTP ${response.status}: 網路請求失敗`)
     }
 
     const data = await response.json()
 
-    if (data.status !== '1') {
-      throw new Error(data.message || 'Etherscan API error')
+    // 處理 Etherscan API 錯誤
+    if (data.status === '0') {
+      if (data.message === 'NOTOK') {
+        throw new Error('Etherscan API rate limit 或查詢失敗，請稍後再試')
+      }
+      throw new Error(data.result || data.message || '查詢失敗')
     }
 
     const weiAmount = data.result
     const ethAmount = parseFloat(weiAmount) / 1e18 // wei to ETH
-
-    // TODO: 查詢 USDT/USDC ERC-20 代幣餘額
 
     return {
       success: true,
@@ -90,6 +97,7 @@ async function fetchETHBalance(address: string): Promise<ChainBalanceResult> {
     }
   }
 }
+
 
 /**
  * 查詢 ADA 地址餘額
