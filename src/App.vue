@@ -1,487 +1,111 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted, nextTick, watch } from 'vue'
 import { useAuthStore } from './stores/useAuthStore'
-import { useCredentialStore } from './stores/useCredentialStore'
-import { useWalletStore } from './stores/useWalletStore'
-import { useAssetStore } from './stores/useAssetStore'
-import { fetchExchangeBalance, type ExchangeBalance } from './services/exchangeService'
-import type { ExchangeName, CryptoSymbol } from './types'
-import { fetchAllPrices, type PriceData } from './services/priceService'
-import { fetchChainBalance, type ChainBalanceResult } from './services/chainService'
-
+import Dashboard from './components/Dashboard.vue'
 
 const authStore = useAuthStore()
-const credentialStore = useCredentialStore()
-const walletStore = useWalletStore()
-const assetStore = useAssetStore()
-
 const passwordInput = ref('')
-const message = ref('')
+const errorMessage = ref('')
+const passwordInputRef = ref<HTMLInputElement | null>(null)
 
-// CEX查詢結果
-const queryResult = ref<ExchangeBalance[] | null>(null)
-const isQuerying = ref(false)
-
-// 價格查詢結果
-const priceResult = ref<Map<CryptoSymbol, PriceData> | null>(null)
-const isQueryingPrice = ref(false)
-
-// 鏈上查詢結果
-const chainQueryResult = ref<ChainBalanceResult | null>(null)
-const isQueryingChain = ref(false)
-
-
-// === 認證相關 ===
+// 首次設定密碼
 function handleSetPassword() {
   if (passwordInput.value.length < 6) {
-    message.value = '❌ 密碼至少需要 6 個字元'
+    errorMessage.value = '密碼至少需要 6 個字元'
     return
   }
   authStore.setPassword(passwordInput.value)
-  message.value = '✅ 密碼設定成功！'
   passwordInput.value = ''
+  errorMessage.value = ''
 }
 
+// 解鎖
 function handleUnlock() {
   const success = authStore.unlock(passwordInput.value)
   if (success) {
-    message.value = '✅ 解鎖成功！'
+    errorMessage.value = ''
+    passwordInput.value = ''
   } else {
-    message.value = '❌ 密碼錯誤'
-  }
-  passwordInput.value = ''
-}
-
-function handleLock() {
-  authStore.lock()
-  queryResult.value = null
-  message.value = '🔒 已鎖定'
-}
-
-// === 交易所憑證相關 ===
-const selectedExchange = ref<ExchangeName>('binance')
-const apiKeyInput = ref('')
-const secretInput = ref('')
-
-function handleAddCredential() {
-  if (!apiKeyInput.value || !secretInput.value) {
-    message.value = '❌ 請輸入完整的 API Key 和 Secret'
-    return
-  }
-
-  try {
-    credentialStore.setCredential(selectedExchange.value, apiKeyInput.value, secretInput.value)
-    message.value = `✅ ${selectedExchange.value.toUpperCase()} 憑證已加密儲存`
-    apiKeyInput.value = ''
-    secretInput.value = ''
-  } catch (e: any) {
-    message.value = `❌ ${e.message}`
+    errorMessage.value = '密碼錯誤'
+    passwordInput.value = ''
   }
 }
 
-function handleRemoveCredential(exchange: ExchangeName) {
-  credentialStore.removeCredential(exchange)
-  message.value = `🗑️ ${exchange.toUpperCase()} 憑證已刪除`
-}
-
-// === 測試查詢交易所餘額 ===
-async function handleQueryBalance(exchange: ExchangeName) {
-  queryResult.value = null
-  isQuerying.value = true
-  message.value = '🔄 查詢中...'
-
-  try {
-    const cred = credentialStore.getCredential(exchange)
-    if (!cred) {
-      message.value = `❌ 找不到 ${exchange.toUpperCase()} 的憑證`
-      isQuerying.value = false
-      return
-    }
-
-    const result = await fetchExchangeBalance(exchange, cred.apiKey, cred.secret)
-
-    if (result.success) {
-      queryResult.value = result.balances
-      message.value = `✅ 查詢成功！找到 ${result.balances.length} 種幣`
-    } else {
-      message.value = `❌ 查詢失敗：${result.error}`
-    }
-  } catch (e: any) {
-    message.value = `❌ 查詢錯誤：${e.message}`
-  } finally {
-    isQuerying.value = false
+// 自動 focus 到密碼輸入框
+watch(() => authStore.isUnlocked, async (isUnlocked) => {
+  if (!isUnlocked) {
+    await nextTick()
+    passwordInputRef.value?.focus()
   }
-}
+})
 
-// === 錢包地址相關 ===
-const walletSource = ref<'binance_hot' | 'okx_hot' | 'ledger_cold'>('ledger_cold')
-const walletChain = ref<'BTC' | 'ETH' | 'ADA'>('BTC')
-const walletAddress = ref('')
-const walletLabel = ref('')
-
-function handleAddWallet() {
-  if (!walletAddress.value) {
-    message.value = '❌ 請輸入錢包地址'
-    return
+// 初始載入時也 focus
+onMounted(() => {
+  if (!authStore.isUnlocked) {
+    passwordInputRef.value?.focus()
   }
-
-  try {
-    walletStore.addAddress(
-      walletSource.value,
-      walletChain.value,
-      walletAddress.value,
-      walletLabel.value || undefined
-    )
-    message.value = `✅ ${walletSource.value} ${walletChain.value} 地址已新增`
-    walletAddress.value = ''
-    walletLabel.value = ''
-  } catch (e: any) {
-    message.value = `❌ ${e.message}`
-  }
-}
-
-function handleRemoveWallet(id: string) {
-  walletStore.removeAddress(id)
-  message.value = '🗑️ 錢包地址已刪除'
-}
-
-// === 價格查詢 ===
-async function handleQueryPrice() {
-  isQueryingPrice.value = true
-  message.value = '🔄 查詢價格中...'
-
-  try {
-    const prices = await fetchAllPrices()
-    priceResult.value = prices
-    message.value = `✅ 查詢成功！取得 ${prices.size} 個幣種價格`
-  } catch (e: any) {
-    message.value = `❌ 查詢失敗：${e.message}`
-  } finally {
-    isQueryingPrice.value = false
-  }
-}
-
-// === 鏈上查詢測試 ===
-async function handleQueryChain(address: string, chain: 'BTC' | 'ETH' | 'ADA') {
-  chainQueryResult.value = null
-  isQueryingChain.value = true
-  message.value = `🔄 查詢 ${chain} 地址餘額中...`
-
-  try {
-    const result = await fetchChainBalance(chain, address)
-    chainQueryResult.value = result
-
-    if (result.success && result.data) {
-      const totalBalance = result.data.balances.reduce((sum, b) => sum + b.amount, 0)
-      message.value = `✅ ${chain} 查詢成功！餘額：${totalBalance.toFixed(8)}`
-    } else {
-      message.value = `❌ ${result.error}`
-    }
-  } catch (e: any) {
-    message.value = `❌ 查詢錯誤：${e.message}`
-  } finally {
-    isQueryingChain.value = false
-  }
-}
-// === 整合查詢測試 ===
-async function handleRefreshAssets() {
-  message.value = '🔄 整合查詢所有資產中...'
-  await assetStore.refresh()
-
-  if (assetStore.errors.length > 0) {
-    message.value = `⚠️ 查詢完成，但有 ${assetStore.errors.length} 個錯誤`
-  } else {
-    message.value = `✅ 查詢完成！總資產價值：$${assetStore.totalValueUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-  }
-}
-
+})
 </script>
 
 <template>
-  <div class="min-h-screen bg-gradient-to-br from-blue-500 to-purple-600 p-4">
-    <div class="max-w-4xl mx-auto py-8 space-y-6">
+  <!-- 已解鎖：顯示儀表板 -->
+  <Dashboard v-if="authStore.isUnlocked" />
 
-      <!-- 標題 -->
+  <!-- 未解鎖：顯示登入畫面 -->
+  <div v-else
+    class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
+    <div class="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/20">
+
+      <!-- Logo -->
       <div class="text-center mb-8">
-        <h1 class="text-4xl font-bold text-white mb-2">CryptoOneView</h1>
-        <p class="text-white/80">Store 功能測試</p>
+        <div
+          class="w-20 h-20 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 border border-white/30">
+          <span class="text-4xl font-bold text-white">C</span>
+        </div>
+        <h1 class="text-3xl font-bold text-white mb-2">CryptoOneView</h1>
+        <p class="text-white/80">您的加密資產儀表板</p>
       </div>
 
-      <!-- 認證狀態卡片 -->
-      <div class="bg-white rounded-2xl shadow-2xl p-6">
-        <div class="mb-4 p-4 rounded-lg" :class="authStore.isUnlocked ? 'bg-green-100' : 'bg-gray-100'">
-          <p class="text-center font-semibold">
-            {{ authStore.isUnlocked ? '🔓 已解鎖' : '🔒 已鎖定' }}
-          </p>
+      <!-- 首次設定密碼 -->
+      <div v-if="!authStore.passwordHash" class="space-y-6">
+        <div>
+          <label class="block text-sm font-semibold text-white/90 mb-2">設定解鎖密碼</label>
+          <input ref="passwordInputRef" v-model="passwordInput" type="password" placeholder="請輸入密碼（至少 6 個字元）"
+            @keyup.enter="handleSetPassword"
+            class="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition" />
         </div>
 
-        <!-- 首次設定密碼 -->
-        <div v-if="!authStore.passwordHash" class="space-y-4">
-          <p class="text-sm text-gray-600">尚未設定密碼，請設定解鎖密碼：</p>
-          <input v-model="passwordInput" type="password" placeholder="輸入密碼（至少6字元）"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          <button @click="handleSetPassword"
-            class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-            設定密碼
-          </button>
-        </div>
-
-        <!-- 解鎖介面 -->
-        <div v-else-if="!authStore.isUnlocked" class="space-y-4">
-          <input v-model="passwordInput" type="password" placeholder="輸入密碼解鎖"
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            @keyup.enter="handleUnlock" />
-          <button @click="handleUnlock"
-            class="w-full bg-green-500 hover:bg-green-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-            解鎖
-          </button>
-        </div>
-
-        <!-- 已解鎖：鎖定按鈕 -->
-        <div v-else>
-          <button @click="handleLock"
-            class="w-full bg-red-500 hover:bg-red-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-            鎖定
-          </button>
-        </div>
-      </div>
-
-      <div v-if="authStore.isUnlocked" class="grid md:grid-cols-2 gap-6">
-
-        <!-- 左側：交易所憑證 -->
-        <div class="space-y-6">
-          <!-- 新增憑證 -->
-          <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
-            <h2 class="text-xl font-bold text-gray-800">交易所 API Key</h2>
-
-            <select v-model="selectedExchange"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="binance">Binance CEX</option>
-              <option value="okx">OKX CEX</option>
-            </select>
-
-            <input v-model="apiKeyInput" type="text" placeholder="API Key"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-
-            <input v-model="secretInput" type="password" placeholder="Secret Key"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-
-            <button @click="handleAddCredential"
-              class="w-full bg-blue-500 hover:bg-blue-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-              儲存憑證
-            </button>
-          </div>
-
-          <!-- 已儲存的憑證 -->
-          <div v-if="credentialStore.credentials.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">已儲存憑證</h3>
-            <div class="space-y-3">
-              <div v-for="cred in credentialStore.credentials" :key="cred.id"
-                class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                <span class="font-semibold">{{ cred.exchange.toUpperCase() }}</span>
-                <div class="flex gap-2">
-                  <button @click="handleQueryBalance(cred.exchange)" :disabled="isQuerying"
-                    class="px-3 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-sm rounded transition">
-                    {{ isQuerying ? '查詢中...' : '查詢餘額' }}
-                  </button>
-                  <button @click="handleRemoveCredential(cred.exchange)"
-                    class="px-3 py-1 bg-red-500 hover:bg-red-600 text-white text-sm rounded transition">
-                    刪除
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 單一交易所查詢結果顯示 -->
-          <div v-if="queryResult && queryResult.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">單一交易所查詢結果</h3>
-            <div class="space-y-2">
-              <div v-for="balance in queryResult" :key="balance.symbol"
-                class="flex justify-between p-3 bg-green-50 rounded-lg">
-                <span class="font-semibold">{{ balance.symbol }}</span>
-                <span class="text-gray-700">{{ balance.total.toFixed(8) }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- 右側：錢包地址 -->
-        <div class="space-y-6">
-          <!-- 新增錢包地址 -->
-          <div class="bg-white rounded-2xl shadow-2xl p-6 space-y-4">
-            <h2 class="text-xl font-bold text-gray-800">錢包地址</h2>
-
-            <select v-model="walletSource"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="binance_hot">Binance Hot</option>
-              <option value="okx_hot">OKX Hot</option>
-              <option value="ledger_cold">Ledger Cold</option>
-            </select>
-
-            <select v-model="walletChain"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="BTC">Bitcoin (BTC)</option>
-              <option value="ETH">Ethereum (ETH)</option>
-              <option value="ADA">Cardano (ADA)</option>
-            </select>
-
-            <input v-model="walletAddress" type="text" placeholder="錢包地址"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-
-            <input v-model="walletLabel" type="text" placeholder="標籤（選填）"
-              class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" />
-
-            <button @click="handleAddWallet"
-              class="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold py-2 px-4 rounded-lg transition">
-              新增地址
-            </button>
-          </div>
-
-          <!-- 已儲存的錢包地址 -->
-          <div v-if="walletStore.addresses.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">已儲存地址</h3>
-            <div class="space-y-3">
-              <div v-for="addr in walletStore.addresses" :key="addr.id" class="p-3 bg-gray-50 rounded-lg">
-                <div class="flex items-center justify-between mb-2">
-                  <div>
-                    <span class="font-semibold text-sm">{{ addr.source.replace('_', ' ').toUpperCase() }}</span>
-                    <span class="ml-2 text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{{ addr.chain }}</span>
-                  </div>
-                  <button @click="handleRemoveWallet(addr.id)"
-                    class="px-2 py-1 bg-red-500 hover:bg-red-600 text-white text-xs rounded transition">
-                    刪除
-                  </button>
-                </div>
-                <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
-                <p v-if="addr.label" class="text-xs text-gray-500 mt-1">{{ addr.label }}</p>
-              </div>
-            </div>
-          </div>
-
-          <!-- 測試查詢鏈上餘額 -->
-          <div v-if="walletStore.addresses.length > 0" class="bg-white rounded-2xl shadow-2xl p-6">
-            <h3 class="text-lg font-bold text-gray-800 mb-4">測試鏈上查詢</h3>
-            <div class="space-y-3">
-              <div v-for="addr in walletStore.addresses" :key="addr.id" class="p-3 bg-purple-50 rounded-lg">
-                <div class="flex items-center justify-between mb-2">
-                  <span class="font-semibold text-sm">{{ addr.chain }}</span>
-                  <button @click="handleQueryChain(addr.address, addr.chain)" :disabled="isQueryingChain"
-                    class="px-3 py-1 bg-green-500 hover:bg-green-600 disabled:bg-gray-400 text-white text-xs rounded transition">
-                    {{ isQueryingChain ? '查詢中...' : '查詢餘額' }}
-                  </button>
-                </div>
-                <p class="text-xs text-gray-600 break-all">{{ addr.address }}</p>
-              </div>
-            </div>
-
-            <!-- 查詢結果 -->
-            <div v-if="chainQueryResult && chainQueryResult.success && chainQueryResult.data"
-              class="mt-4 p-4 bg-green-50 rounded-lg">
-              <h4 class="font-bold text-sm mb-2">查詢結果：{{ chainQueryResult.data.chain }}</h4>
-              <div class="space-y-1">
-                <div v-for="balance in chainQueryResult.data.balances" :key="balance.symbol"
-                  class="flex justify-between text-sm">
-                  <span>{{ balance.symbol }}:</span>
-                  <span class="font-mono">{{ balance.amount.toFixed(8) }}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-      </div>
-
-      <!-- 價格查詢測試 -->
-      <div v-if="authStore.isUnlocked" class="bg-white rounded-2xl shadow-2xl p-6">
-        <h2 class="text-xl font-bold text-gray-800 mb-4">價格查詢測試</h2>
-        <button @click="handleQueryPrice" :disabled="isQueryingPrice"
-          class="w-full bg-indigo-500 hover:bg-indigo-600 disabled:bg-gray-400 text-white font-semibold py-2 px-4 rounded-lg transition">
-          {{ isQueryingPrice ? '查詢中...' : '查詢所有幣種價格（CoinGecko）' }}
+        <button @click="handleSetPassword"
+          class="w-full bg-white hover:bg-white/90 text-purple-600 font-bold py-3 px-6 rounded-xl transition shadow-lg">
+          設定密碼
         </button>
 
-        <!-- 價格結果 -->
-        <div v-if="priceResult && priceResult.size > 0" class="mt-4 space-y-2">
-          <div v-for="[symbol, price] in priceResult" :key="symbol"
-            class="flex justify-between items-center p-3 bg-indigo-50 rounded-lg">
-            <span class="font-semibold">{{ symbol }}</span>
-            <span class="text-lg text-gray-700">${{ price.priceUSD.toLocaleString('en-US', {
-              minimumFractionDigits: 2,
-              maximumFractionDigits: 2 }) }}</span>
-          </div>
+        <div class="text-center text-xs text-white/70 space-y-1">
+          <p>⚠️ 密碼將用於加密您的 API Keys</p>
+          <p>請妥善保管，遺失無法復原</p>
         </div>
       </div>
 
-      <!-- 整合查詢測試 -->
-      <div v-if="authStore.isUnlocked"
-        class="bg-gradient-to-r from-purple-500 to-pink-500 rounded-2xl shadow-2xl p-6 text-white">
-        <h2 class="text-2xl font-bold mb-4">🚀 整合查詢所有資產</h2>
-        <p class="text-white/90 mb-4 text-sm">
-          將查詢所有已設定的交易所 API 和錢包地址，並計算總資產價值
-        </p>
-        <button @click="handleRefreshAssets" :disabled="assetStore.isLoading"
-          class="w-full bg-white hover:bg-gray-100 disabled:bg-gray-300 text-purple-600 font-bold py-3 px-6 rounded-lg transition shadow-lg">
-          {{ assetStore.isLoading ? '查詢中...' : '🔄 Refresh 全部資產' }}
+      <!-- 解鎖介面 -->
+      <div v-else class="space-y-6">
+        <div>
+          <label class="block text-sm font-semibold text-white/90 mb-2">輸入密碼解鎖</label>
+          <input ref="passwordInputRef" v-model="passwordInput" type="password" placeholder="請輸入密碼"
+            @keyup.enter="handleUnlock"
+            class="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition" />
+        </div>
+
+        <button @click="handleUnlock"
+          class="w-full bg-white hover:bg-white/90 text-purple-600 font-bold py-3 px-6 rounded-xl transition shadow-lg">
+          🔓 解鎖
         </button>
-
-        <!-- 查詢結果 -->
-        <div v-if="assetStore.lastUpdated" class="mt-6 space-y-4">
-          <!-- 總資產 -->
-          <div class="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-            <p class="text-sm text-white/80 mb-1">總資產價值</p>
-            <p class="text-3xl font-bold">${{ assetStore.totalValueUSD.toLocaleString('en-US', {
-              minimumFractionDigits:
-                2, maximumFractionDigits: 2 }) }}</p>
-            <p class="text-xs text-white/70 mt-2">
-              上次更新：{{ new Date(assetStore.lastUpdated).toLocaleTimeString('zh-TW') }}
-            </p>
-          </div>
-
-          <!-- 資產明細 -->
-          <div v-if="assetStore.assetSummaries.length > 0" class="bg-white/20 backdrop-blur-sm rounded-xl p-4">
-            <h3 class="font-bold mb-3">資產明細</h3>
-            <div class="space-y-2">
-              <div v-for="summary in assetStore.assetSummaries" :key="summary.symbol"
-                class="bg-white/10 rounded-lg p-3">
-                <div class="flex justify-between items-center mb-2">
-                  <span class="font-bold text-lg">{{ summary.symbol }}</span>
-                  <span class="text-sm">{{ summary.percentage.toFixed(2) }}%</span>
-                </div>
-                <div class="flex justify-between text-sm">
-                  <span>數量：{{ summary.totalAmount.toFixed(8) }}</span>
-                  <span>價值：${{ summary.valueUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}</span>
-                </div>
-                <!-- 來源明細 -->
-                <div class="mt-2 text-xs text-white/70 space-y-1">
-                  <div v-for="source in summary.sources" :key="source.source">
-                    {{ source.source }}: {{ source.amount.toFixed(8) }}
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- 錯誤訊息 -->
-          <div v-if="assetStore.errors.length > 0" class="bg-red-500/30 backdrop-blur-sm rounded-xl p-4">
-            <h3 class="font-bold mb-2">⚠️ 錯誤訊息</h3>
-            <div class="space-y-1 text-sm">
-              <p v-for="(error, index) in assetStore.errors" :key="index">
-                • {{ error }}
-              </p>
-            </div>
-          </div>
-        </div>
       </div>
 
-      <!-- 訊息顯示 -->
-      <div v-if="message" class="bg-white rounded-lg shadow p-4">
-        <p class="text-center font-medium"
-          :class="message.includes('✅') ? 'text-green-600' : message.includes('❌') ? 'text-red-600' : 'text-gray-600'">
-          {{ message }}
-        </p>
+      <!-- 錯誤訊息 -->
+      <div v-if="errorMessage" class="mt-4 p-3 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg">
+        <p class="text-sm text-red-200 text-center">❌ {{ errorMessage }}</p>
       </div>
 
     </div>
   </div>
 </template>
-
