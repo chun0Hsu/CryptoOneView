@@ -3,6 +3,9 @@ import { ref } from 'vue'
 import { useAssetStore } from '@/stores/useAssetStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import SettingsModal from './SettingsModal.vue'
+import AssetChart from './AssetChart.vue'
+import CoinIcon from './CoinIcon.vue'
+
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
@@ -121,12 +124,10 @@ function handleLogout() {
       <!-- Assets Grid -->
       <div class="grid lg:grid-cols-2 gap-6">
 
-        <!-- Asset Allocation (Chart Placeholder) -->
+        <!-- Asset Allocation -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
           <h3 class="text-lg font-bold mb-4">資產配置</h3>
-          <div class="flex items-center justify-center h-64 text-gray-500">
-            📊 圖表組件（下一步實作）
-          </div>
+          <AssetChart :assets="assetStore.assetSummaries" />
         </div>
 
         <!-- Top Assets -->
@@ -136,10 +137,7 @@ function handleLogout() {
             <div v-for="summary in assetStore.assetSummaries.slice(0, 5)" :key="summary.symbol"
               class="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition">
               <div class="flex items-center space-x-3">
-                <div
-                  class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold">
-                  {{ summary.symbol.slice(0, 1) }}
-                </div>
+                <CoinIcon :symbol="summary.symbol" size="md" />
                 <div>
                   <p class="font-semibold">{{ summary.symbol }}</p>
                   <p class="text-sm text-gray-400">{{ summary.totalAmount.toFixed(8) }}</p>
@@ -179,10 +177,7 @@ function handleLogout() {
                 class="hover:bg-gray-700/30 transition">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
-                    <div
-                      class="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-500 rounded-full flex items-center justify-center font-bold text-sm">
-                      {{ summary.symbol.slice(0, 1) }}
-                    </div>
+                    <CoinIcon :symbol="summary.symbol" size="sm" />
                     <span class="font-semibold">{{ summary.symbol }}</span>
                   </div>
                 </td>

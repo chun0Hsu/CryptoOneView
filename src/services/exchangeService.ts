@@ -31,8 +31,8 @@ export async function fetchExchangeBalance(
   // Mock 資料
   const mockBalances: ExchangeBalance[] = [
     { symbol: 'BTC', free: 0.5, used: 0, total: 0.5 },
-    { symbol: 'ETH', free: 10.3, used: 0, total: 10.3 },
-    { symbol: 'USDT', free: 25000, used: 0, total: 25000 }
+    { symbol: 'ETH', free: 100.3, used: 0, total: 100.3 },
+    { symbol: 'USDT', free: 250000, used: 0, total: 250000 }
   ]
 
   return {
