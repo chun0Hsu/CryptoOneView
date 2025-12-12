@@ -107,7 +107,8 @@ export const useAssetStore = defineStore('asset', () => {
           const result = await fetchExchangeBalance(
             cred.exchange,
             decrypted.apiKey,
-            decrypted.secret
+            decrypted.secret,
+            decrypted.passphrase  // 傳遞 passphrase
           )
 
           if (result.success) {

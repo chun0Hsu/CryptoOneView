@@ -22,7 +22,8 @@ const activeTab = ref<'exchange' | 'wallet'>('exchange')
 const exchangeForm = ref({
   exchange: 'binance' as ExchangeName,
   apiKey: '',
-  secret: ''
+  secret: '',
+  passphrase: ''
 })
 
 // 錢包地址表單
@@ -42,19 +43,28 @@ function handleAddExchange() {
     return
   }
 
+  // OKX 需要 Passphrase
+  if (exchangeForm.value.exchange === 'okx' && !exchangeForm.value.passphrase) {
+    message.value = '⚠️ OKX 需要 Passphrase'
+    return
+  }
+
   try {
     credentialStore.setCredential(
       exchangeForm.value.exchange,
       exchangeForm.value.apiKey,
-      exchangeForm.value.secret
+      exchangeForm.value.secret,
+      exchangeForm.value.passphrase || undefined
     )
     message.value = `✅ ${exchangeForm.value.exchange.toUpperCase()} 憑證已儲存`
     exchangeForm.value.apiKey = ''
     exchangeForm.value.secret = ''
+    exchangeForm.value.passphrase = ''
   } catch (e: any) {
     message.value = `❌ ${e.message}`
   }
 }
+
 
 // 刪除交易所憑證
 function handleRemoveExchange(exchange: ExchangeName) {
@@ -169,6 +179,13 @@ function handleClose() {
                   <label class="block text-sm font-semibold text-gray-300 mb-2">Secret Key</label>
                   <input v-model="exchangeForm.secret" type="password" placeholder="請輸入 Secret Key"
                     class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+
+                <div v-if="exchangeForm.exchange === 'okx'">
+                  <label class="block text-sm font-semibold text-gray-300 mb-2">Passphrase</label>
+                  <input v-model="exchangeForm.passphrase" type="password" placeholder="請輸入 Passphrase"
+                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <p class="text-xs text-gray-500 mt-1">💡 OKX API 需要 Passphrase（在 OKX 建立 API Key 時設定）</p>
                 </div>
 
                 <button @click="handleAddExchange"
