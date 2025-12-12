@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { ref } from 'vue'
 import { useAssetStore } from '@/stores/useAssetStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 import SettingsModal from './SettingsModal.vue'
 import AssetChart from './AssetChart.vue'
 import CoinIcon from './CoinIcon.vue'
-
+import { ref, computed } from 'vue'
+import type { SourceType } from '@/types'
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
@@ -18,6 +18,55 @@ const sourceFilters = ref({
   okx_hot: true,
   ledger_cold: true
 })
+
+// 根據 Filter 過濾資產
+const filteredAssets = computed(() => {
+  // 取得所有啟用的來源
+  const enabledSources = Object.entries(sourceFilters.value)
+    .filter(([_, enabled]) => enabled)
+    .map(([source, _]) => source as SourceType)
+
+  // 如果全部都沒勾選，就顯示全部
+  if (enabledSources.length === 0) {
+    return assetStore.assetSummaries
+  }
+
+  // 過濾資產：只保留來源符合的
+  return assetStore.assetSummaries.map(summary => {
+    // 過濾該幣種的來源
+    const filteredSources = summary.sources.filter(s =>
+      enabledSources.includes(s.source)
+    )
+
+    // 重新計算數量
+    const totalAmount = filteredSources.reduce((sum, s) => sum + s.amount, 0)
+
+    // 如果過濾後數量為 0，就不顯示這個幣種
+    if (totalAmount === 0) return null
+
+    return {
+      ...summary,
+      totalAmount,
+      valueUSD: totalAmount * summary.priceUSD,
+      sources: filteredSources
+    }
+  }).filter(s => s !== null) as AssetSummary[]
+})
+
+// 過濾後的總價值
+const filteredTotalValue = computed(() => {
+  return filteredAssets.value.reduce((sum, s) => sum + s.valueUSD, 0)
+})
+
+// 重新計算百分比
+const filteredAssetsWithPercentage = computed(() => {
+  const total = filteredTotalValue.value
+  return filteredAssets.value.map(asset => ({
+    ...asset,
+    percentage: total > 0 ? (asset.valueUSD / total) * 100 : 0
+  }))
+})
+
 
 // Modal 控制
 const showSettings = ref(false)
@@ -113,8 +162,7 @@ function handleLogout() {
       <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-8 shadow-2xl">
         <p class="text-sm text-white/80 mb-2">總資產價值</p>
         <p class="text-5xl font-bold mb-4">
-          ${{ assetStore.totalValueUSD.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-          }}
+          ${{ filteredTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
         </p>
         <p v-if="assetStore.lastUpdated" class="text-sm text-white/70">
           上次更新：{{ new Date(assetStore.lastUpdated).toLocaleString('zh-TW') }}
@@ -127,14 +175,14 @@ function handleLogout() {
         <!-- Asset Allocation -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
           <h3 class="text-lg font-bold mb-4">資產配置</h3>
-          <AssetChart :assets="assetStore.assetSummaries" />
+          <AssetChart :assets="filteredAssetsWithPercentage" />
         </div>
 
         <!-- Top Assets -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
           <h3 class="text-lg font-bold mb-4">資產明細</h3>
           <div class="space-y-3">
-            <div v-for="summary in assetStore.assetSummaries.slice(0, 5)" :key="summary.symbol"
+            <div v-for="summary in filteredAssetsWithPercentage.slice(0, 5)" :key="summary.symbol"
               class="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition">
               <div class="flex items-center space-x-3">
                 <CoinIcon :symbol="summary.symbol" size="md" />
@@ -173,7 +221,7 @@ function handleLogout() {
               </tr>
             </thead>
             <tbody class="divide-y divide-gray-700">
-              <tr v-for="summary in assetStore.assetSummaries" :key="summary.symbol"
+              <tr v-for="summary in filteredAssetsWithPercentage" :key="summary.symbol"
                 class="hover:bg-gray-700/30 transition">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
