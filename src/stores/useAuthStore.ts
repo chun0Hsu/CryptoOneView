@@ -4,9 +4,13 @@ import CryptoJS from 'crypto-js'
 
 export const useAuthStore = defineStore('auth', () => {
   // 狀態
-  const isUnlocked = ref(false)           // 是否已解鎖
-  const passwordHash = ref<string | null>(null)  // 密碼 hash（從 localStorage 讀取）
-  const sessionPassword = ref<string | null>(null)  // 當前 session 的密碼（僅存在記憶體）
+  const isUnlocked = ref(false)
+  const passwordHash = ref<string | null>(null)
+  const sessionPassword = ref<string | null>(null)
+
+  // Session 超時相關
+  const SESSION_TIMEOUT = 30 * 60 * 1000 // 30 分鐘（毫秒）
+  let timeoutId: number | null = null
 
   // 初始化：從 localStorage 讀取密碼 hash
   function init() {
@@ -23,12 +27,29 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.setItem('cryptooneview_password_hash', hash)
   }
 
+  // 重置超時計時器
+  function resetTimeout() {
+    // 清除舊的計時器
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId)
+    }
+
+    // 設定新的計時器
+    if (isUnlocked.value) {
+      timeoutId = window.setTimeout(() => {
+        lock()
+        console.log('Session timeout: Auto-locked after 30 minutes of inactivity')
+      }, SESSION_TIMEOUT)
+    }
+  }
+
   // 驗證並解鎖
   function unlock(password: string): boolean {
     const hash = CryptoJS.SHA256(password).toString()
     if (hash === passwordHash.value) {
       isUnlocked.value = true
-      sessionPassword.value = password  // 存在記憶體中，用於解密 API Key
+      sessionPassword.value = password
+      resetTimeout() // 開始計時
       return true
     }
     return false
@@ -38,6 +59,19 @@ export const useAuthStore = defineStore('auth', () => {
   function lock() {
     isUnlocked.value = false
     sessionPassword.value = null
+
+    // 清除計時器
+    if (timeoutId !== null) {
+      clearTimeout(timeoutId)
+      timeoutId = null
+    }
+  }
+
+  // 記錄使用者活動（重置計時器）
+  function recordActivity() {
+    if (isUnlocked.value) {
+      resetTimeout()
+    }
   }
 
   return {
@@ -47,6 +81,7 @@ export const useAuthStore = defineStore('auth', () => {
     init,
     setPassword,
     unlock,
-    lock
+    lock,
+    recordActivity
   }
 })

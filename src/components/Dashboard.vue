@@ -1,11 +1,11 @@
 <script setup lang="ts">
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { useAssetStore } from '@/stores/useAssetStore'
 import { useAuthStore } from '@/stores/useAuthStore'
+import type { SourceType } from '@/types'
 import SettingsModal from './SettingsModal.vue'
 import AssetChart from './AssetChart.vue'
 import CoinIcon from './CoinIcon.vue'
-import { ref, computed } from 'vue'
-import type { SourceType } from '@/types'
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
@@ -50,7 +50,7 @@ const filteredAssets = computed(() => {
       valueUSD: totalAmount * summary.priceUSD,
       sources: filteredSources
     }
-  }).filter(s => s !== null) as AssetSummary[]
+  }).filter(s => s !== null) as any[]
 })
 
 // 過濾後的總價值
@@ -67,7 +67,6 @@ const filteredAssetsWithPercentage = computed(() => {
   }))
 })
 
-
 // Modal 控制
 const showSettings = ref(false)
 
@@ -80,6 +79,28 @@ async function handleRefresh() {
 function handleLogout() {
   authStore.lock()
 }
+
+// 監聽使用者活動，重置 session 超時
+function handleUserActivity() {
+  authStore.recordActivity()
+}
+
+// 監聽的事件類型
+const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart']
+
+onMounted(() => {
+  // 註冊所有活動事件監聽器
+  activityEvents.forEach(event => {
+    window.addEventListener(event, handleUserActivity)
+  })
+})
+
+onUnmounted(() => {
+  // 清除所有事件監聽器
+  activityEvents.forEach(event => {
+    window.removeEventListener(event, handleUserActivity)
+  })
+})
 </script>
 
 <template>
@@ -250,7 +271,9 @@ function handleLogout() {
       </div>
 
     </main>
+
     <!-- Settings Modal -->
     <SettingsModal :show="showSettings" @close="showSettings = false" />
+
   </div>
 </template>
