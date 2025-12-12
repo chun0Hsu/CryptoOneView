@@ -16,46 +16,137 @@ export interface ExchangeBalanceResult {
 }
 
 /**
- * 查詢交易所餘額（Mock 版本，方便先開發 UI）
- * TODO: 之後實作真實的 Binance/OKX API 呼叫
+ * 取得 Function URL（開發環境 vs 生產環境）
  */
-export async function fetchExchangeBalance(
-  exchange: ExchangeName,
+function getFunctionUrl(functionName: string): string {
+  // 開發環境：Netlify Dev
+  if (import.meta.env.DEV) {
+    return `http://localhost:8888/.netlify/functions/${functionName}`
+  }
+  // 生產環境：部署後的 URL
+  return `/.netlify/functions/${functionName}`
+}
+
+/**
+ * 查詢 Binance 餘額（透過 Netlify Function）
+ */
+async function fetchBinanceBalance(
   apiKey: string,
   secret: string
 ): Promise<ExchangeBalanceResult> {
+  try {
+    const url = getFunctionUrl('binance-balance')
 
-  // 模擬網路延遲
-  await new Promise(resolve => setTimeout(resolve, 1000))
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ apiKey, secret })
+    })
 
-  // Mock 資料
-  const mockBalances: ExchangeBalance[] = [
-    { symbol: 'BTC', free: 0.5, used: 0, total: 0.5 },
-    { symbol: 'ETH', free: 100.3, used: 0, total: 100.3 },
-    { symbol: 'USDT', free: 250000, used: 0, total: 250000 }
-  ]
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
 
-  return {
-    success: true,
-    balances: mockBalances
+    const data = await response.json()
+
+    return {
+      success: true,
+      balances: data.balances
+    }
+  } catch (error: any) {
+    console.error('Binance API error:', error)
+    return {
+      success: false,
+      balances: [],
+      error: error.message || 'Binance 查詢失敗'
+    }
   }
 }
 
 /**
- * 驗證 API Key（Mock 版本）
+ * 查詢 OKX 餘額（透過 Netlify Function）
+ */
+async function fetchOKXBalance(
+  apiKey: string,
+  secret: string,
+  passphrase?: string
+): Promise<ExchangeBalanceResult> {
+  try {
+    if (!passphrase) {
+      throw new Error('OKX API 需要 Passphrase')
+    }
+
+    const url = getFunctionUrl('okx-balance')
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ apiKey, secret, passphrase })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    return {
+      success: true,
+      balances: data.balances
+    }
+  } catch (error: any) {
+    console.error('OKX API error:', error)
+    return {
+      success: false,
+      balances: [],
+      error: error.message || 'OKX 查詢失敗'
+    }
+  }
+}
+
+/**
+ * 查詢交易所餘額（統一介面）
+ */
+export async function fetchExchangeBalance(
+  exchange: ExchangeName,
+  apiKey: string,
+  secret: string,
+  passphrase?: string
+): Promise<ExchangeBalanceResult> {
+  switch (exchange) {
+    case 'binance':
+      return fetchBinanceBalance(apiKey, secret)
+    case 'okx':
+      return fetchOKXBalance(apiKey, secret, passphrase)
+    default:
+      return {
+        success: false,
+        balances: [],
+        error: '不支援的交易所'
+      }
+  }
+}
+
+/**
+ * 驗證 API Key（簡單驗證：嘗試查詢餘額）
  */
 export async function validateAPIKey(
   exchange: ExchangeName,
   apiKey: string,
-  secret: string
+  secret: string,
+  passphrase?: string
 ): Promise<{ valid: boolean; error?: string }> {
+  const result = await fetchExchangeBalance(exchange, apiKey, secret, passphrase)
 
-  await new Promise(resolve => setTimeout(resolve, 500))
-
-  // 簡單驗證：只要有輸入就算有效
-  if (apiKey && secret) {
+  if (result.success) {
     return { valid: true }
   }
 
-  return { valid: false, error: 'API Key 或 Secret 為空' }
+  return { valid: false, error: result.error }
 }
