@@ -16,15 +16,12 @@ export interface ExchangeBalanceResult {
 }
 
 /**
- * 取得 Function URL（開發環境 vs 生產環境）
+ * 取得 API 端點 URL
  */
 function getFunctionUrl(functionName: string): string {
-  // 開發環境：Netlify Dev
-  if (process.env.NODE_ENV === 'development') {
-    return `http://localhost:8888/.netlify/functions/${functionName}`
-  }
-  // 生產環境：部署後的 URL
-  return `/.netlify/functions/${functionName}`
+  // Vercel 部署：使用 /api/ 路徑
+  // 本地開發：Vercel CLI 會自動處理
+  return `/api/${functionName}`
 }
 
 /**

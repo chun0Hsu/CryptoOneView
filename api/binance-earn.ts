@@ -1,4 +1,4 @@
-import { Handler } from '@netlify/functions'
+import type { VercelRequest, VercelResponse } from '@vercel/node'
 import crypto from 'crypto'
 
 interface RequestBody {
@@ -6,25 +6,30 @@ interface RequestBody {
   secret: string
 }
 
-export const handler: Handler = async (event) => {
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: JSON.stringify({ error: 'Method not allowed' })
-    }
+export default async function handler(
+  req: VercelRequest,
+  res: VercelResponse
+) {
+  res.setHeader('Access-Control-Allow-Credentials', 'true')
+  res.setHeader('Access-Control-Allow-Origin', '*')
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+
+  if (req.method === 'OPTIONS') {
+    return res.status(200).end()
+  }
+
+  if (req.method !== 'POST') {
+    return res.status(405).json({ error: 'Method not allowed' })
   }
 
   try {
-    const { apiKey, secret } = JSON.parse(event.body || '{}') as RequestBody
+    const { apiKey, secret } = req.body as RequestBody
 
     if (!apiKey || !secret) {
-      return {
-        statusCode: 400,
-        body: JSON.stringify({ error: 'Missing apiKey or secret' })
-      }
+      return res.status(400).json({ error: 'Missing apiKey or secret' })
     }
 
-    // 建立簽名
     const timestamp = Date.now()
     const queryString = `timestamp=${timestamp}`
     const signature = crypto
@@ -32,7 +37,6 @@ export const handler: Handler = async (event) => {
       .update(queryString)
       .digest('hex')
 
-    // 呼叫 Binance Earn API
     const url = `https://api.binance.com/sapi/v1/lending/union/account?${queryString}&signature=${signature}`
 
     const response = await fetch(url, {
@@ -43,19 +47,16 @@ export const handler: Handler = async (event) => {
 
     if (!response.ok) {
       const errorData = await response.json()
-      return {
-        statusCode: response.status,
-        body: JSON.stringify({ error: errorData.msg || 'Binance Earn API error' })
-      }
+      return res.status(response.status).json({
+        error: errorData.msg || 'Binance Earn API error'
+      })
     }
 
     const data = await response.json()
 
-    // 解析 Earn 餘額
     const supportedSymbols = ['BTC', 'ETH', 'ADA', 'USDT', 'USDC']
     const balances: any[] = []
 
-    // 彈性產品 (Flexible)
     for (const item of data.positionAmountVos || []) {
       if (supportedSymbols.includes(item.asset)) {
         const amount = parseFloat(item.amount || '0')
@@ -69,19 +70,11 @@ export const handler: Handler = async (event) => {
       }
     }
 
-    return {
-      statusCode: 200,
-      headers: {
-        'Content-Type': 'application/json',
-        'Access-Control-Allow-Origin': '*'
-      },
-      body: JSON.stringify({ balances })
-    }
+    return res.status(200).json({ balances })
   } catch (error: any) {
     console.error('Function error:', error)
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: error.message || 'Internal server error' })
-    }
+    return res.status(500).json({
+      error: error.message || 'Internal server error'
+    })
   }
 }
