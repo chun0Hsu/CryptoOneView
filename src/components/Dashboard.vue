@@ -1,15 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import { useAssetStore } from '@/stores/useAssetStore'
-import { useAuthStore } from '@/stores/useAuthStore'
 import type { SourceType } from '@/types'
 import SettingsModal from './SettingsModal.vue'
 import AssetChart from './AssetChart.vue'
 import CoinIcon from './CoinIcon.vue'
 import Toast from './Toast.vue'
+import LoadingOverlay from './LoadingOverlay.vue'
 import { useToastStore } from '@/stores/useToastStore'
 import { useWalletStore } from '@/stores/useWalletStore'
 import { useCredentialStore } from '@/stores/useCredentialStore'
+import { useAssetStore } from '@/stores/useAssetStore'
+import { useAuthStore } from '@/stores/useAuthStore'
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
@@ -346,5 +347,8 @@ onUnmounted(() => {
 
     <!-- Toast -->
     <Toast :messages="toastStore.messages" @remove="toastStore.remove" />
+
+    <!-- Loading Overlay -->
+    <LoadingOverlay :show="assetStore.loading" message="正在查詢資產..." />
   </div>
 </template>
