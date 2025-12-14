@@ -52,14 +52,23 @@ export default async function handler(
       }
     })
 
+    const contentType = response.headers.get('content-type')
+
     if (!response.ok) {
-      return res.status(response.status).json({ error: 'OKX Earn API error' })
+      console.log(`OKX Earn API failed with status ${response.status}`)
+      return res.status(200).json({ balances: [] })
+    }
+
+    if (!contentType?.includes('application/json')) {
+      console.log('OKX Earn API returned non-JSON response')
+      return res.status(200).json({ balances: [] })
     }
 
     const data = await response.json()
 
     if (data.code !== '0') {
-      return res.status(400).json({ error: data.msg || 'OKX Earn API error' })
+      console.log(`OKX Earn API error: ${data.msg}`)
+      return res.status(200).json({ balances: [] })
     }
 
     const supportedSymbols = ['BTC', 'ETH', 'ADA', 'USDT', 'USDC']
@@ -80,9 +89,7 @@ export default async function handler(
 
     return res.status(200).json({ balances })
   } catch (error: any) {
-    console.error('Function error:', error)
-    return res.status(500).json({
-      error: error.message || 'Internal server error'
-    })
+    console.error('OKX Earn function error:', error)
+    return res.status(200).json({ balances: [] })
   }
 }

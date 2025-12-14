@@ -45,11 +45,35 @@ export default async function handler(
       }
     })
 
+    // 檢查 Content-Type
+    const contentType = response.headers.get('content-type')
+
     if (!response.ok) {
-      const errorData = await response.json()
-      return res.status(response.status).json({
-        error: errorData.msg || 'Binance Earn API error'
-      })
+      // 嘗試解析錯誤訊息
+      let errorMessage = 'Binance Earn API error'
+
+      if (contentType?.includes('application/json')) {
+        try {
+          const errorData = await response.json()
+          errorMessage = errorData.msg || errorMessage
+        } catch {
+          // JSON 解析失敗，使用預設錯誤訊息
+        }
+      } else {
+        // 不是 JSON，讀取文字
+        const errorText = await response.text()
+        errorMessage = errorText.substring(0, 100) // 只取前 100 字元
+      }
+
+      // Earn API 失敗不算嚴重錯誤，返回空結果
+      console.log(`Binance Earn API failed: ${errorMessage}`)
+      return res.status(200).json({ balances: [] })
+    }
+
+    // 檢查是否為 JSON
+    if (!contentType?.includes('application/json')) {
+      console.log('Binance Earn API returned non-JSON response')
+      return res.status(200).json({ balances: [] })
     }
 
     const data = await response.json()
@@ -72,9 +96,8 @@ export default async function handler(
 
     return res.status(200).json({ balances })
   } catch (error: any) {
-    console.error('Function error:', error)
-    return res.status(500).json({
-      error: error.message || 'Internal server error'
-    })
+    console.error('Binance Earn function error:', error)
+    // Earn 查詢失敗不應該影響主要功能，返回空結果
+    return res.status(200).json({ balances: [] })
   }
 }
