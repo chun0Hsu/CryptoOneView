@@ -6,9 +6,12 @@ import type { SourceType } from '@/types'
 import SettingsModal from './SettingsModal.vue'
 import AssetChart from './AssetChart.vue'
 import CoinIcon from './CoinIcon.vue'
+import Toast from './Toast.vue'
+import { useToastStore } from '@/stores/useToastStore'
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
+const toastStore = useToastStore()
 
 // 來源過濾器（預設全選）
 const sourceFilters = ref({
@@ -73,6 +76,12 @@ const showSettings = ref(false)
 // 重新整理資產
 async function handleRefresh() {
   await assetStore.refresh()
+
+  if (assetStore.errors.length > 0) {
+    toastStore.warning(`查詢完成，但有 ${assetStore.errors.length} 個錯誤`)
+  } else {
+    toastStore.success('資產更新成功！')
+  }
 }
 
 // 登出
@@ -275,5 +284,7 @@ onUnmounted(() => {
     <!-- Settings Modal -->
     <SettingsModal :show="showSettings" @close="showSettings = false" />
 
+    <!-- Toast -->
+    <Toast :messages="toastStore.messages" @remove="toastStore.remove" />
   </div>
 </template>
