@@ -150,3 +150,120 @@ export async function validateAPIKey(
 
   return { valid: false, error: result.error }
 }
+
+/**
+ * Earn 餘額結果
+ */
+export interface EarnBalanceResult {
+  success: boolean
+  balances: Array<{
+    symbol: CryptoSymbol
+    amount: number
+    type: string
+  }>
+  error?: string
+}
+
+/**
+ * 查詢 Binance Earn 餘額
+ */
+async function fetchBinanceEarn(
+  apiKey: string,
+  secret: string
+): Promise<EarnBalanceResult> {
+  try {
+    const url = getFunctionUrl('binance-earn')
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ apiKey, secret })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    return {
+      success: true,
+      balances: data.balances
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      balances: [],
+      error: error.message
+    }
+  }
+}
+
+/**
+ * 查詢 OKX Earn 餘額
+ */
+async function fetchOKXEarn(
+  apiKey: string,
+  secret: string,
+  passphrase: string
+): Promise<EarnBalanceResult> {
+  try {
+    const url = getFunctionUrl('okx-earn')
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ apiKey, secret, passphrase })
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json()
+      throw new Error(errorData.error || `HTTP ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    return {
+      success: true,
+      balances: data.balances
+    }
+  } catch (error: any) {
+    return {
+      success: false,
+      balances: [],
+      error: error.message
+    }
+  }
+}
+
+/**
+ * 查詢交易所 Earn 餘額（統一介面）
+ */
+export async function fetchExchangeEarn(
+  exchange: ExchangeName,
+  apiKey: string,
+  secret: string,
+  passphrase?: string
+): Promise<EarnBalanceResult> {
+  switch (exchange) {
+    case 'binance':
+      return fetchBinanceEarn(apiKey, secret)
+    case 'okx':
+      if (!passphrase) {
+        return { success: false, balances: [], error: 'Missing passphrase' }
+      }
+      return fetchOKXEarn(apiKey, secret, passphrase)
+    default:
+      return {
+        success: false,
+        balances: [],
+        error: '不支援的交易所'
+      }
+  }
+}
+

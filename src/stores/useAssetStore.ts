@@ -2,7 +2,7 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useCredentialStore } from './useCredentialStore'
 import { useWalletStore } from './useWalletStore'
-import { fetchExchangeBalance } from '@/services/exchangeService'
+import { fetchExchangeBalance, fetchExchangeEarn } from '@/services/exchangeService'
 import { fetchChainBalance } from '@/services/chainService'
 import { fetchAllPrices } from '@/services/priceService'
 import type { Asset, CryptoSymbol, PriceData, SourceType } from '@/types'
@@ -98,21 +98,22 @@ export const useAssetStore = defineStore('asset', () => {
       const priceData = await fetchAllPrices()
       prices.value = priceData
 
-      // 2. 查詢交易所餘額（使用 credentialStore）
+      // 2. 查詢交易所餘額（現貨 + Earn）
       for (const cred of credentialStore.credentials) {
         try {
           const decrypted = credentialStore.getCredential(cred.exchange)
           if (!decrypted) continue
 
-          const result = await fetchExchangeBalance(
+          // 2.1 查詢現貨帳戶
+          const spotResult = await fetchExchangeBalance(
             cred.exchange,
             decrypted.apiKey,
             decrypted.secret,
-            decrypted.passphrase  // 傳遞 passphrase
+            decrypted.passphrase
           )
 
-          if (result.success) {
-            for (const balance of result.balances) {
+          if (spotResult.success) {
+            for (const balance of spotResult.balances) {
               newAssets.push({
                 symbol: balance.symbol,
                 amount: balance.total,
@@ -120,12 +121,37 @@ export const useAssetStore = defineStore('asset', () => {
               })
             }
           } else {
-            errors.value.push(`${cred.exchange} 查詢失敗: ${result.error}`)
+            errors.value.push(`${cred.exchange} 現貨查詢失敗: ${spotResult.error}`)
           }
+
+          // 2.2 查詢 Earn 帳戶
+          try {
+            const earnResult = await fetchExchangeEarn(
+              cred.exchange,
+              decrypted.apiKey,
+              decrypted.secret,
+              decrypted.passphrase
+            )
+
+            if (earnResult.success) {
+              for (const balance of earnResult.balances) {
+                newAssets.push({
+                  symbol: balance.symbol,
+                  amount: balance.amount,
+                  source: `${cred.exchange}_cex` as SourceType
+                })
+              }
+            }
+            // Earn 查詢失敗不算嚴重錯誤，只記錄但不顯示
+          } catch (e) {
+            console.log(`${cred.exchange} Earn 查詢略過`)
+          }
+
         } catch (e: any) {
           errors.value.push(`${cred.exchange} 錯誤: ${e.message}`)
         }
       }
+
 
       // 3. 查詢鏈上錢包餘額
       for (const addr of walletStore.addresses) {
