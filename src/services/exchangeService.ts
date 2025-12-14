@@ -20,7 +20,7 @@ export interface ExchangeBalanceResult {
  */
 function getFunctionUrl(functionName: string): string {
   // 開發環境：Netlify Dev
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     return `http://localhost:8888/.netlify/functions/${functionName}`
   }
   // 生產環境：部署後的 URL
