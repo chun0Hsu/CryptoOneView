@@ -2,7 +2,7 @@
 
 > 統一管理您的加密資產 - 支援多交易所與鏈上錢包的資產儀表板
 
-🚀 **Live Demo**: https://profound-meringue-2e61b7.netlify.app/
+🚀 **Live Demo**: https://crypto-one-view.netlify.app/
 
 ---
 
