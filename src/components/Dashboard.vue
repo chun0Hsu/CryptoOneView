@@ -8,10 +8,14 @@ import AssetChart from './AssetChart.vue'
 import CoinIcon from './CoinIcon.vue'
 import Toast from './Toast.vue'
 import { useToastStore } from '@/stores/useToastStore'
+import { useWalletStore } from '@/stores/useWalletStore'
+import { useCredentialStore } from '@/stores/useCredentialStore'
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
 const toastStore = useToastStore()
+const walletStore = useWalletStore()
+const credentialStore = useCredentialStore()
 
 // 來源過濾器（預設全選）
 const sourceFilters = ref({
@@ -197,6 +201,62 @@ onUnmounted(() => {
         <p v-if="assetStore.lastUpdated" class="text-sm text-white/70">
           上次更新：{{ new Date(assetStore.lastUpdated).toLocaleString('zh-TW') }}
         </p>
+      </div>
+
+      <!-- 空狀態提示 -->
+      <div
+        v-if="!assetStore.lastUpdated && credentialStore.credentials.length === 0 && walletStore.addresses.length === 0"
+        class="bg-gray-800 rounded-xl p-8 border border-gray-700 text-center">
+        <div class="max-w-md mx-auto space-y-6">
+          <div class="text-6xl">🚀</div>
+          <div>
+            <h3 class="text-2xl font-bold text-white mb-2">歡迎使用 CryptoOneView</h3>
+            <p class="text-gray-400">開始統一管理您的加密資產</p>
+          </div>
+
+          <div class="space-y-4 text-left">
+            <div class="flex items-start space-x-3">
+              <span class="text-2xl">1️⃣</span>
+              <div>
+                <p class="font-semibold text-white">新增資料來源</p>
+                <p class="text-sm text-gray-400">點擊右上角 Settings，新增交易所 API Key 或錢包地址</p>
+              </div>
+            </div>
+
+            <div class="flex items-start space-x-3">
+              <span class="text-2xl">2️⃣</span>
+              <div>
+                <p class="font-semibold text-white">查詢資產</p>
+                <p class="text-sm text-gray-400">點擊 Refresh 按鈕，系統會自動查詢並彙整您的資產</p>
+              </div>
+            </div>
+
+            <div class="flex items-start space-x-3">
+              <span class="text-2xl">3️⃣</span>
+              <div>
+                <p class="font-semibold text-white">查看統計</p>
+                <p class="text-sm text-gray-400">透過圖表和表格，一目了然掌握資產配置</p>
+              </div>
+            </div>
+          </div>
+
+          <button @click="showSettings = true"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg">
+            開始設定 →
+          </button>
+
+          <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+            <div class="flex items-start space-x-3">
+              <span class="text-yellow-500 text-lg">💡</span>
+              <div class="text-xs text-gray-400 text-left space-y-1">
+                <p><strong>安全提示：</strong></p>
+                <p>• 所有資料加密儲存在您的瀏覽器中</p>
+                <p>• API Key 請使用 Read-Only 權限</p>
+                <p>• 系統不會傳送您的資料到任何第三方</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
       <!-- Assets Grid -->
