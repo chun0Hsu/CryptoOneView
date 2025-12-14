@@ -52,60 +52,80 @@ onMounted(() => {
   <Dashboard v-if="authStore.isUnlocked" />
 
   <!-- 未解鎖：顯示登入畫面 -->
-  <div v-else
-    class="min-h-screen bg-gradient-to-br from-blue-600 via-purple-600 to-pink-600 flex items-center justify-center p-4">
-    <div class="bg-white/10 backdrop-blur-lg rounded-3xl shadow-2xl p-8 w-full max-w-md border border-white/20">
+  <div v-else class="min-h-screen bg-gray-900 flex items-center justify-center p-4">
+    <div class="bg-gray-800 rounded-2xl shadow-2xl p-8 w-full max-w-md border border-gray-700">
 
       <!-- Logo -->
       <div class="text-center mb-8">
         <div
-          class="w-20 h-20 mx-auto bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-4 border border-white/30">
-          <span class="text-4xl font-bold text-white">C</span>
+          class="w-16 h-16 mx-auto bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center mb-4">
+          <span class="text-3xl font-bold text-white">C</span>
         </div>
-        <h1 class="text-3xl font-bold text-white mb-2">CryptoOneView</h1>
-        <p class="text-white/80">您的加密資產儀表板</p>
+        <h1 class="text-2xl font-bold text-white mb-1">CryptoOneView</h1>
+        <p class="text-gray-400 text-sm">統一管理您的加密資產</p>
       </div>
 
       <!-- 首次設定密碼 -->
-      <div v-if="!authStore.passwordHash" class="space-y-6">
+      <div v-if="!authStore.passwordHash" class="space-y-4">
         <div>
-          <label class="block text-sm font-semibold text-white/90 mb-2">設定解鎖密碼</label>
+          <label class="block text-sm font-semibold text-gray-300 mb-2">設定解鎖密碼</label>
           <input ref="passwordInputRef" v-model="passwordInput" type="password" placeholder="請輸入密碼（至少 6 個字元）"
             @keyup.enter="handleSetPassword"
-            class="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition" />
+            class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
         </div>
 
         <button @click="handleSetPassword"
-          class="w-full bg-white hover:bg-white/90 text-purple-600 font-bold py-3 px-6 rounded-xl transition shadow-lg">
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg">
           設定密碼
         </button>
 
-        <div class="text-center text-xs text-white/70 space-y-1">
-          <p>⚠️ 密碼將用於加密您的 API Keys</p>
-          <p>請妥善保管，遺失無法復原</p>
+        <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+          <div class="flex items-start space-x-3">
+            <span class="text-yellow-500 text-lg">⚠️</span>
+            <div class="text-xs text-gray-400 space-y-1">
+              <p>• 密碼將用於加密您的 API Keys</p>
+              <p>• 所有資料儲存在本地，請妥善保管密碼</p>
+              <p>• 密碼遺失將無法復原，需重新設定</p>
+            </div>
+          </div>
         </div>
       </div>
 
       <!-- 解鎖介面 -->
-      <div v-else class="space-y-6">
+      <div v-else class="space-y-4">
         <div>
-          <label class="block text-sm font-semibold text-white/90 mb-2">輸入密碼解鎖</label>
+          <label class="block text-sm font-semibold text-gray-300 mb-2">解鎖密碼</label>
           <input ref="passwordInputRef" v-model="passwordInput" type="password" placeholder="請輸入密碼"
             @keyup.enter="handleUnlock"
-            class="w-full px-4 py-3 bg-white/10 backdrop-blur-sm border border-white/30 rounded-xl text-white placeholder-white/50 focus:outline-none focus:ring-2 focus:ring-white/50 transition" />
+            class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
         </div>
 
         <button @click="handleUnlock"
-          class="w-full bg-white hover:bg-white/90 text-purple-600 font-bold py-3 px-6 rounded-xl transition shadow-lg">
-          🔓 解鎖
+          class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg flex items-center justify-center space-x-2">
+          <span>🔓</span>
+          <span>解鎖</span>
         </button>
+
+        <div class="text-center">
+          <p class="text-xs text-gray-500">
+            系統將在 30 分鐘無操作後自動鎖定
+          </p>
+        </div>
       </div>
 
       <!-- 錯誤訊息 -->
-      <div v-if="errorMessage" class="mt-4 p-3 bg-red-500/20 backdrop-blur-sm border border-red-400/30 rounded-lg">
-        <p class="text-sm text-red-200 text-center">❌ {{ errorMessage }}</p>
+      <div v-if="errorMessage" class="mt-4 p-3 bg-red-600/20 border border-red-600/30 rounded-lg">
+        <p class="text-sm text-red-400 text-center">❌ {{ errorMessage }}</p>
+      </div>
+
+      <!-- Footer -->
+      <div class="mt-8 pt-6 border-t border-gray-700 text-center">
+        <p class="text-xs text-gray-500">
+          🔒 All data stored locally in your browser
+        </p>
       </div>
 
     </div>
   </div>
 </template>
+
