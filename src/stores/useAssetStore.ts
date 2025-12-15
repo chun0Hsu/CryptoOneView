@@ -184,15 +184,6 @@ export const useAssetStore = defineStore('asset', () => {
             }
           }
 
-          // 如果有 API Key，不需要延遲（每秒可 5 次）
-          // 如果沒有 API Key，延遲 2 秒（避免 rate limit）
-          if (!addr.apiKey) {
-            const isLastAddress = walletStore.addresses.indexOf(addr) === walletStore.addresses.length - 1
-            if (!isLastAddress) {
-              await new Promise(resolve => setTimeout(resolve, 2000))
-            }
-          }
-
         } catch (e: any) {
           errors.value.push(`${addr.source} ${addr.chain} 錯誤: ${e.message}`)
         }
