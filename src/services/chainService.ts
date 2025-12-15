@@ -22,15 +22,25 @@ export interface ChainBalanceResult {
  */
 async function fetchBTCBalance(address: string): Promise<ChainBalanceResult> {
   try {
-    const url = `https://blockchain.info/q/addressbalance/${address}`
+    // 使用 Blockchain.com API（支援所有 BTC 地址格式）
+    const url = `https://blockchain.info/balance?active=${address}`
     const response = await fetch(url)
 
     if (!response.ok) {
       throw new Error(`HTTP error! status: ${response.status}`)
     }
 
-    const satoshis = await response.text()
-    const btcAmount = parseInt(satoshis) / 100000000 // satoshi to BTC
+    const data = await response.json()
+
+    // data 格式: { "address": { "final_balance": 123456, ... } }
+    const addressData = data[address]
+
+    if (!addressData) {
+      throw new Error('地址查詢失敗')
+    }
+
+    const satoshis = addressData.final_balance
+    const btcAmount = satoshis / 100000000 // satoshi to BTC
 
     return {
       success: true,
@@ -49,19 +59,37 @@ async function fetchBTCBalance(address: string): Promise<ChainBalanceResult> {
   }
 }
 
+
 /**
  * 查詢 ETH 地址餘額
  * 使用 Etherscan API（免費額度，但有 rate limit）
  */
-async function fetchETHBalance(address: string): Promise<ChainBalanceResult> {
+async function fetchETHBalance(
+  address: string,
+  apiKey?: string
+): Promise<ChainBalanceResult> {
   try {
     // 驗證地址格式
     if (!address.startsWith('0x') || address.length !== 42) {
       throw new Error('無效的 ETH 地址格式')
     }
 
-    // 使用 Etherscan 免費 API
-    const url = `https://api.etherscan.io/api?module=account&action=balance&address=${address}&tag=latest`
+    // 建立 URL 參數
+    const params = new URLSearchParams({
+      chainid: '1',        
+      module: 'account',
+      action: 'balance',
+      address: address,
+      tag: 'latest'
+    })
+
+    // 如果有 API Key，加入參數
+    if (apiKey) {
+      params.append('apikey', apiKey)
+    }
+
+    const url = `https://api.etherscan.io/v2/api?${params.toString()}`
+
     const response = await fetch(url)
 
     if (!response.ok) {
@@ -71,9 +99,19 @@ async function fetchETHBalance(address: string): Promise<ChainBalanceResult> {
     const data = await response.json()
 
     // 處理 Etherscan API 錯誤
-    if (data.status === '0') {
-      if (data.message === 'NOTOK') {
-        throw new Error('Etherscan API rate limit 或查詢失敗，請稍後再試')
+    if (data.status === '0' || data.status !== '1') {
+      // 檢查是否為 rate limit 錯誤
+      if (data.message === 'NOTOK' ||
+        data.result?.includes('rate limit') ||
+        data.result?.includes('Max rate limit reached')) {
+        const errorMsg = apiKey
+          ? 'Etherscan API 請求過於頻繁，請稍後再試'
+          : 'Etherscan API 請求受限，建議在設定中加入 API Key'
+        console.warn(errorMsg)
+        return {
+          success: false,
+          error: errorMsg
+        }
       }
       throw new Error(data.result || data.message || '查詢失敗')
     }
@@ -93,7 +131,7 @@ async function fetchETHBalance(address: string): Promise<ChainBalanceResult> {
     console.error('Failed to fetch ETH balance:', error)
     return {
       success: false,
-      error: error.message || 'ETH 查詢失敗'
+      error: error.message || 'ETH 查詢失敗，請稍後再試'
     }
   }
 }
@@ -101,16 +139,35 @@ async function fetchETHBalance(address: string): Promise<ChainBalanceResult> {
 
 /**
  * 查詢 ADA 地址餘額
- * 使用 Blockfrost API（需要免費 API Key）
  */
 async function fetchADABalance(address: string): Promise<ChainBalanceResult> {
   try {
-    // 暫時返回 Mock 資料，因為 Blockfrost 需要 API Key
-    // TODO: 實作 Blockfrost API 呼叫
+    // 使用 Koios 免費 API（Cardano 社群維護）
+    const url = `https://api.koios.rest/api/v1/address_info?_address=${address}`
+    const response = await fetch(url)
+
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`)
+    }
+
+    const data = await response.json()
+
+    // Koios 返回陣列，取第一筆資料
+    if (!data || data.length === 0) {
+      throw new Error('地址查詢失敗')
+    }
+
+    const addressInfo = data[0]
+    const lovelace = parseInt(addressInfo.balance || '0')
+    const adaAmount = lovelace / 1000000 // lovelace to ADA
 
     return {
-      success: false,
-      error: 'ADA 查詢尚未實作（需要 Blockfrost API Key）'
+      success: true,
+      data: {
+        chain: 'ADA',
+        address,
+        balances: [{ symbol: 'ADA', amount: adaAmount }]
+      }
     }
   } catch (error: any) {
     console.error('Failed to fetch ADA balance:', error)
@@ -121,18 +178,20 @@ async function fetchADABalance(address: string): Promise<ChainBalanceResult> {
   }
 }
 
+
 /**
  * 統一的鏈上查詢介面
  */
 export async function fetchChainBalance(
   chain: 'BTC' | 'ETH' | 'ADA',
-  address: string
+  address: string,
+  apiKey?: string  // ← 新增這個參數
 ): Promise<ChainBalanceResult> {
   switch (chain) {
     case 'BTC':
       return fetchBTCBalance(address)
     case 'ETH':
-      return fetchETHBalance(address)
+      return fetchETHBalance(address, apiKey)  
     case 'ADA':
       return fetchADABalance(address)
     default:
@@ -142,3 +201,4 @@ export async function fetchChainBalance(
       }
   }
 }
+

@@ -349,6 +349,6 @@ onUnmounted(() => {
     <Toast :messages="toastStore.messages" @remove="toastStore.remove" />
 
     <!-- Loading Overlay -->
-    <LoadingOverlay :show="assetStore.loading" message="正在查詢資產..." />
+    <LoadingOverlay :show="assetStore.loading" message="查詢資產中..." />
   </div>
 </template>

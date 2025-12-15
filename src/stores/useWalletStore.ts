@@ -4,12 +4,14 @@ import { ref, computed } from 'vue'
 // 錢包地址資料結構
 export interface WalletAddress {
   id: string
-  source: 'binance_hot' | 'okx_hot' | 'ledger_cold'  // 5個來源中的錢包類型
+  source: 'binance_hot' | 'okx_hot' | 'ledger_cold'
   chain: 'BTC' | 'ETH' | 'ADA'
   address: string
   label?: string
+  apiKey?: string  // ← 新增這行
   createdAt: number
 }
+
 
 export const useWalletStore = defineStore('wallet', () => {
   // 狀態：所有錢包地址
@@ -56,7 +58,8 @@ export const useWalletStore = defineStore('wallet', () => {
     source: 'binance_hot' | 'okx_hot' | 'ledger_cold',
     chain: 'BTC' | 'ETH' | 'ADA',
     address: string,
-    label?: string
+    label?: string,
+    apiKey?: string  
   ) {
     // 檢查是否已存在（同一個地址在同一個來源）
     const exists = addresses.value.some(
@@ -72,11 +75,13 @@ export const useWalletStore = defineStore('wallet', () => {
       chain,
       address,
       label,
+      apiKey,  // ← 新增這行
       createdAt: Date.now()
     })
 
     save()
   }
+
 
   // 更新標籤
   function updateLabel(id: string, label: string) {

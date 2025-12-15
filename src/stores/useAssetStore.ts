@@ -157,7 +157,7 @@ export const useAssetStore = defineStore('asset', () => {
       // 3. 查詢鏈上錢包餘額
       for (const addr of walletStore.addresses) {
         try {
-          const result = await fetchChainBalance(addr.chain, addr.address)
+          const result = await fetchChainBalance(addr.chain, addr.address, addr.apiKey)  
 
           if (result.success && result.data) {
             for (const balance of result.data.balances) {
@@ -168,12 +168,37 @@ export const useAssetStore = defineStore('asset', () => {
               })
             }
           } else {
-            errors.value.push(`${addr.source} ${addr.chain} 查詢失敗: ${result.error}`)
+            // 優化錯誤訊息：如果是 rate limit 且沒有 API Key，提示用戶
+            if (result.error?.includes('rate limit')) {
+              if (!addr.apiKey) {
+                errors.value.push(`${addr.source} ${addr.chain}: 查詢受限，建議在設定中加入 Etherscan API Key`)
+              } else {
+                console.warn(`${addr.source} ${addr.chain} rate limit even with API Key`)
+              }
+            } else if (result.error &&
+              !result.error.includes('頻繁') &&
+              !result.error.includes('請稍後')) {
+              errors.value.push(`${addr.source} ${addr.chain} 查詢失敗: ${result.error}`)
+            } else {
+              console.warn(`${addr.source} ${addr.chain} temporary error, skipped`)
+            }
           }
+
+          // 如果有 API Key，不需要延遲（每秒可 5 次）
+          // 如果沒有 API Key，延遲 2 秒（避免 rate limit）
+          if (!addr.apiKey) {
+            const isLastAddress = walletStore.addresses.indexOf(addr) === walletStore.addresses.length - 1
+            if (!isLastAddress) {
+              await new Promise(resolve => setTimeout(resolve, 2000))
+            }
+          }
+
         } catch (e: any) {
           errors.value.push(`${addr.source} ${addr.chain} 錯誤: ${e.message}`)
         }
       }
+
+
 
       // 更新狀態
       assets.value = newAssets

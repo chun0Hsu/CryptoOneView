@@ -25,7 +25,7 @@ function getFunctionUrl(functionName: string): string {
 }
 
 /**
- * 查詢 Binance 餘額（透過 Netlify Function）
+ * 查詢 Binance 餘額
  */
 async function fetchBinanceBalance(
   apiKey: string,
@@ -64,7 +64,7 @@ async function fetchBinanceBalance(
 }
 
 /**
- * 查詢 OKX 餘額（透過 Netlify Function）
+ * 查詢 OKX 餘額
  */
 async function fetchOKXBalance(
   apiKey: string,

@@ -28,10 +28,11 @@ const exchangeForm = ref({
 
 // 錢包地址表單
 const walletForm = ref({
-  source: 'ledger_cold' as 'binance_hot' | 'okx_hot' | 'ledger_cold',
+  source: 'binance_hot' as 'binance_hot' | 'okx_hot' | 'ledger_cold',
   chain: 'BTC' as 'BTC' | 'ETH' | 'ADA',
   address: '',
-  label: ''
+  label: '',
+  apiKey: ''
 })
 
 const message = ref('')
@@ -86,15 +87,19 @@ function handleAddWallet() {
       walletForm.value.source,
       walletForm.value.chain,
       walletForm.value.address,
-      walletForm.value.label || undefined
+      walletForm.value.label || undefined,
+      walletForm.value.apiKey || undefined  
     )
     message.value = `✅ ${walletForm.value.chain} 地址已新增`
     walletForm.value.address = ''
     walletForm.value.label = ''
+    walletForm.value.apiKey = ''  
   } catch (e: any) {
     message.value = `❌ ${e.message}`
   }
 }
+
+
 
 // 刪除錢包地址
 function handleRemoveWallet(id: string) {
@@ -226,7 +231,7 @@ function handleClose() {
                     class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="binance_hot">Binance Hot</option>
                     <option value="okx_hot">OKX Hot</option>
-                    <option value="ledger_cold">Ledger Cold</option>
+                    <!-- <option value="ledger_cold">Ledger Cold</option> V2.0 -->
                   </select>
                 </div>
 
@@ -236,7 +241,7 @@ function handleClose() {
                     class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
-                    <option value="ADA">Cardano (ADA)</option>
+                    <!-- <option value="ADA">Cardano (ADA)</option> V2.0 -->
                   </select>
                 </div>
 
@@ -244,6 +249,21 @@ function handleClose() {
                   <label class="block text-sm font-semibold text-gray-300 mb-2">錢包地址</label>
                   <input v-model="walletForm.address" type="text" placeholder="請輸入錢包地址"
                     class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                </div>
+
+                <div v-if="walletForm.chain === 'ETH'">
+                  <label class="block text-sm font-semibold text-gray-300 mb-2">
+                    Etherscan API Key（選填，建議填寫）
+                  </label>
+                  <input v-model="walletForm.apiKey" type="text" placeholder="選填：您的 Etherscan API Key"
+                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                  <p class="text-xs text-gray-500 mt-1">
+                    💡 免費申請：
+                    <a href="https://etherscan.io/myapikey" target="_blank" class="text-blue-400 hover:underline">
+                      https://etherscan.io/myapikey
+                    </a>
+                    （避免查詢限制）
+                  </p>
                 </div>
 
                 <div>
