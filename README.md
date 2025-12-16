@@ -142,11 +142,8 @@ npm run build
 - [x] ETH 鏈上查詢（含 Etherscan API Key 支援）
 - [x] BTC 單一地址查詢
 - [x] 加密儲存系統（AES-256）
-- [x] 深色 OKX 科技風格主題
 - [x] 資產分佈圓餅圖
 - [x] Toast 通知系統
-- [x] 從 Netlify 遷移到 Vercel
-- [x] Etherscan V2 API 升級
 
 ### V2.0 🚧 (計劃中)
 
@@ -159,11 +156,6 @@ npm run build
 - [ ] **響應式設計**
   - 手機版優化
   - 平板版優化
-  
-- [ ] **更多交易所**
-  - Bybit
-  - KuCoin
-  - Gate.io
   
 - [ ] **完整鏈上支援**
   - ADA (Cardano) 查詢
@@ -179,7 +171,6 @@ npm run build
   - 擴充至 20+ 主流幣種
 
 #### 優先度 P2（加分）
-- [ ] **多語言支援**（英文、繁中、簡中）
 - [ ] **自定義提醒**（資產變動通知）
 - [ ] **投資組合分析**
 

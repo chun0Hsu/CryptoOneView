@@ -185,11 +185,11 @@ onUnmounted(() => {
             <span class="text-sm">OKX Hot</span>
           </label>
 
-          <label class="flex items-center space-x-2 cursor-pointer">
+          <!-- <label class="flex items-center space-x-2 cursor-pointer">
             <input type="checkbox" v-model="sourceFilters.ledger_cold"
               class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
             <span class="text-sm">Ledger Cold</span>
-          </label>
+          </label> -->
         </div>
       </div>
 
