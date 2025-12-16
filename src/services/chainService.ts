@@ -131,7 +131,7 @@ async function fetchETHBalance(
     console.error('Failed to fetch ETH balance:', error)
     return {
       success: false,
-      error: error.message || 'ETH 查詢失敗，請稍後再試'
+      error: error.message || 'ETH 查詢失敗'
     }
   }
 }

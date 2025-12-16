@@ -30,7 +30,6 @@ export const useAssetStore = defineStore('asset', () => {
   const isLoading = ref(false)
   const lastUpdated = ref<number | null>(null)
   const errors = ref<string[]>([])
-  const loading = ref(false) 
 
   // Getter: 計算資產彙總
   const assetSummaries = computed<AssetSummary[]>(() => {
@@ -90,7 +89,7 @@ export const useAssetStore = defineStore('asset', () => {
 
   // 重新整理所有資料
   async function refresh() {
-    loading.value = true
+    isLoading.value = true
     errors.value = []
     const newAssets: Asset[] = []
 
@@ -202,7 +201,7 @@ export const useAssetStore = defineStore('asset', () => {
     } catch (e: any) {
       errors.value.push(`整體查詢錯誤: ${e.message}`)
     } finally {
-      loading.value = false
+      isLoading.value = false
     }
   }
 
@@ -219,7 +218,6 @@ export const useAssetStore = defineStore('asset', () => {
     prices,
     isLoading,
     lastUpdated,
-    loading,
     errors,
     assetSummaries,
     totalValueUSD,
