@@ -157,7 +157,11 @@ export const useAssetStore = defineStore('asset', () => {
       // 3. 查詢鏈上錢包餘額
       for (const addr of walletStore.addresses) {
         try {
-          const result = await fetchChainBalance(addr.chain, addr.address, addr.apiKey)  
+          // 解密 API Key（如果有）
+          const apiKey = addr.encryptedApiKey ? walletStore.getApiKey(addr.id) : undefined
+
+          const result = await fetchChainBalance(addr.chain, addr.address, apiKey || undefined)
+
 
           if (result.success && result.data) {
             for (const balance of result.data.balances) {
@@ -170,7 +174,7 @@ export const useAssetStore = defineStore('asset', () => {
           } else {
             // 優化錯誤訊息：如果是 rate limit 且沒有 API Key，提示用戶
             if (result.error?.includes('rate limit')) {
-              if (!addr.apiKey) {
+              if (!addr.encryptedApiKey) {
                 errors.value.push(`${addr.source} ${addr.chain}: 查詢受限，建議在設定中加入 Etherscan API Key`)
               } else {
                 console.warn(`${addr.source} ${addr.chain} rate limit even with API Key`)
