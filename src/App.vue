@@ -28,10 +28,14 @@ function handleUnlock() {
   } else {
     errorMessage.value = '密碼錯誤'
     passwordInput.value = ''
+    // 密碼錯誤後重新 focus
+    nextTick(() => {
+      passwordInputRef.value?.focus()
+    })
   }
 }
 
-// 自動 focus 到密碼輸入框
+// 監聽解鎖狀態變化，自動 focus
 watch(() => authStore.isUnlocked, async (isUnlocked) => {
   if (!isUnlocked) {
     await nextTick()
@@ -39,8 +43,15 @@ watch(() => authStore.isUnlocked, async (isUnlocked) => {
   }
 })
 
-// 初始載入時也 focus
-onMounted(() => {
+// 初始載入時 focus
+onMounted(async () => {
+  // 先初始化 authStore
+  authStore.init()
+
+  // 等待下一個 tick 確保 DOM 已渲染
+  await nextTick()
+
+  // 如果未解鎖，focus 到密碼欄位
   if (!authStore.isUnlocked) {
     passwordInputRef.value?.focus()
   }
@@ -70,7 +81,7 @@ onMounted(() => {
         <div>
           <label class="block text-sm font-semibold text-gray-300 mb-2">設定解鎖密碼</label>
           <input ref="passwordInputRef" v-model="passwordInput" type="password" placeholder="請輸入密碼（至少 6 個字元）"
-            @keyup.enter="handleSetPassword"
+            @keyup.enter="handleSetPassword" autofocus
             class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
         </div>
 
@@ -96,7 +107,7 @@ onMounted(() => {
         <div>
           <label class="block text-sm font-semibold text-gray-300 mb-2">解鎖密碼</label>
           <input ref="passwordInputRef" v-model="passwordInput" type="password" placeholder="請輸入密碼"
-            @keyup.enter="handleUnlock"
+            @keyup.enter="handleUnlock" autofocus
             class="w-full px-4 py-3 bg-gray-900 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition" />
         </div>
 
@@ -128,4 +139,3 @@ onMounted(() => {
     </div>
   </div>
 </template>
-

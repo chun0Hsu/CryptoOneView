@@ -54,7 +54,7 @@ const chartOptions: ChartOptions<'doughnut'> = {
     legend: {
       position: 'right',
       labels: {
-        color: '#D1D5DB',
+        color: '#F3F4F6',  
         padding: 12,
         font: {
           size: 13,
@@ -73,7 +73,8 @@ const chartOptions: ChartOptions<'doughnut'> = {
                 text: `${label} (${percentage}%)`,
                 fillStyle: dataset.backgroundColor?.[i] as string,
                 hidden: false,
-                index: i
+                index: i,
+                fontColor: '#F3F4F6'  
               }
             })
           }
