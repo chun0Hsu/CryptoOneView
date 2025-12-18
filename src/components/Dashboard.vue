@@ -12,11 +12,13 @@ import { useCredentialStore } from '@/stores/useCredentialStore'
 import { useAssetStore } from '@/stores/useAssetStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 
+
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
 const toastStore = useToastStore()
 const walletStore = useWalletStore()
 const credentialStore = useCredentialStore()
+
 
 // 來源過濾器（預設全選）
 const sourceFilters = ref({
@@ -27,6 +29,7 @@ const sourceFilters = ref({
   ledger_cold: true
 })
 
+
 // 根據 Filter 過濾資產
 const filteredAssets = computed(() => {
   // 取得所有啟用的來源
@@ -34,10 +37,12 @@ const filteredAssets = computed(() => {
     .filter(([_, enabled]) => enabled)
     .map(([source, _]) => source as SourceType)
 
+
   // 如果全部都沒勾選，就顯示全部
   if (enabledSources.length === 0) {
     return assetStore.assetSummaries
   }
+
 
   // 過濾資產：只保留來源符合的
   return assetStore.assetSummaries.map(summary => {
@@ -49,8 +54,10 @@ const filteredAssets = computed(() => {
     // 重新計算數量
     const totalAmount = filteredSources.reduce((sum, s) => sum + s.amount, 0)
 
+
     // 如果過濾後數量為 0，就不顯示這個幣種
     if (totalAmount === 0) return null
+
 
     return {
       ...summary,
@@ -61,10 +68,12 @@ const filteredAssets = computed(() => {
   }).filter(s => s !== null) as any[]
 })
 
+
 // 過濾後的總價值
 const filteredTotalValue = computed(() => {
   return filteredAssets.value.reduce((sum, s) => sum + s.valueUSD, 0)
 })
+
 
 // 重新計算百分比
 const filteredAssetsWithPercentage = computed(() => {
@@ -75,12 +84,28 @@ const filteredAssetsWithPercentage = computed(() => {
   }))
 })
 
+
+// 格式化來源名稱
+function formatSource(source: SourceType): string {
+  const nameMap: Record<SourceType, string> = {
+    binance_cex: 'Binance CEX',
+    okx_cex: 'OKX CEX',
+    binance_hot: 'Binance Hot',
+    okx_hot: 'OKX Hot',
+    ledger_cold: 'Ledger Cold'
+  }
+  return nameMap[source] || source
+}
+
+
 // Modal 控制
 const showSettings = ref(false)
+
 
 // 重新整理資產
 async function handleRefresh() {
   await assetStore.refresh()
+
 
   if (assetStore.errors.length > 0) {
     toastStore.warning(`查詢完成，但有 ${assetStore.errors.length} 個錯誤`)
@@ -89,18 +114,22 @@ async function handleRefresh() {
   }
 }
 
+
 // 登出
 function handleLogout() {
   authStore.lock()
 }
+
 
 // 監聽使用者活動，重置 session 超時
 function handleUserActivity() {
   authStore.recordActivity()
 }
 
+
 // 監聽的事件類型
 const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart']
+
 
 onMounted(() => {
   // 註冊所有活動事件監聽器
@@ -108,6 +137,7 @@ onMounted(() => {
     window.addEventListener(event, handleUserActivity)
   })
 })
+
 
 onUnmounted(() => {
   // 清除所有事件監聽器
@@ -117,8 +147,10 @@ onUnmounted(() => {
 })
 </script>
 
+
 <template>
   <div class="min-h-screen bg-gray-900 text-white">
+
 
     <!-- Header -->
     <header class="border-b border-gray-800 bg-gray-900/95 backdrop-blur-sm sticky top-0 z-50">
@@ -134,16 +166,19 @@ onUnmounted(() => {
             </h1>
           </div>
 
+
           <div class="flex items-center space-x-4">
             <button @click="handleRefresh" :disabled="assetStore.isLoading"
               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded-lg font-semibold transition flex items-center space-x-2">
               <span>{{ assetStore.isLoading ? '⟳ 更新中...' : '🔄 Refresh' }}</span>
             </button>
 
+
             <button @click="showSettings = true"
               class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition">
               ⚙️ Settings
             </button>
+
 
             <button @click="handleLogout"
               class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition">
@@ -154,8 +189,10 @@ onUnmounted(() => {
       </div>
     </header>
 
+
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
 
       <!-- Filter Bar -->
       <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
@@ -167,11 +204,13 @@ onUnmounted(() => {
             <span class="text-sm">Binance CEX</span>
           </label>
 
+
           <label class="flex items-center space-x-2 cursor-pointer">
             <input type="checkbox" v-model="sourceFilters.okx_cex"
               class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
             <span class="text-sm">OKX CEX</span>
           </label>
+
 
           <label class="flex items-center space-x-2 cursor-pointer">
             <input type="checkbox" v-model="sourceFilters.binance_hot"
@@ -179,11 +218,13 @@ onUnmounted(() => {
             <span class="text-sm">Binance Hot</span>
           </label>
 
+
           <label class="flex items-center space-x-2 cursor-pointer">
             <input type="checkbox" v-model="sourceFilters.okx_hot"
               class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
             <span class="text-sm">OKX Hot</span>
           </label>
+
 
           <!-- <label class="flex items-center space-x-2 cursor-pointer">
             <input type="checkbox" v-model="sourceFilters.ledger_cold"
@@ -192,6 +233,7 @@ onUnmounted(() => {
           </label> -->
         </div>
       </div>
+
 
       <!-- Total Balance Card -->
       <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-8 shadow-2xl">
@@ -204,6 +246,7 @@ onUnmounted(() => {
         </p>
       </div>
 
+
       <!-- 空狀態提示 -->
       <div
         v-if="!assetStore.lastUpdated && credentialStore.credentials.length === 0 && walletStore.addresses.length === 0"
@@ -215,6 +258,7 @@ onUnmounted(() => {
             <p class="text-gray-400">開始統一管理您的加密資產</p>
           </div>
 
+
           <div class="space-y-4 text-left">
             <div class="flex items-start space-x-3">
               <span class="text-2xl">1️⃣</span>
@@ -224,6 +268,7 @@ onUnmounted(() => {
               </div>
             </div>
 
+
             <div class="flex items-start space-x-3">
               <span class="text-2xl">2️⃣</span>
               <div>
@@ -231,6 +276,7 @@ onUnmounted(() => {
                 <p class="text-sm text-gray-400">點擊 Refresh 按鈕，系統會自動查詢並彙整您的資產</p>
               </div>
             </div>
+
 
             <div class="flex items-start space-x-3">
               <span class="text-2xl">3️⃣</span>
@@ -241,10 +287,12 @@ onUnmounted(() => {
             </div>
           </div>
 
+
           <button @click="showSettings = true"
             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg">
             開始設定 →
           </button>
+
 
           <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
             <div class="flex items-start space-x-3">
@@ -260,8 +308,10 @@ onUnmounted(() => {
         </div>
       </div>
 
+
       <!-- Assets Grid -->
       <div class="grid lg:grid-cols-2 gap-6">
+
 
         <!-- Asset Allocation -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -269,29 +319,53 @@ onUnmounted(() => {
           <AssetChart :assets="filteredAssetsWithPercentage" />
         </div>
 
-        <!-- Top Assets -->
+
+        <!-- 來源分布 -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
-          <h3 class="text-lg font-bold mb-4">資產明細</h3>
-          <div class="space-y-3">
-            <div v-for="summary in filteredAssetsWithPercentage.slice(0, 5)" :key="summary.symbol"
-              class="flex justify-between items-center p-3 bg-gray-700/50 rounded-lg hover:bg-gray-700 transition">
-              <div class="flex items-center space-x-3">
-                <CoinIcon :symbol="summary.symbol" size="md" />
-                <div>
-                  <p class="font-semibold">{{ summary.symbol }}</p>
-                  <p class="text-sm text-gray-400">{{ summary.totalAmount.toFixed(8) }}</p>
+          <h3 class="text-lg font-bold mb-4">來源分布</h3>
+
+          <!-- 限制高度與圓餅圖一致，並加上滾動 -->
+          <div
+            class="h-64 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
+
+            <div v-for="summary in filteredAssetsWithPercentage" :key="summary.symbol"
+              class="bg-gray-700/30 rounded-lg p-3 hover:bg-gray-700/50 transition">
+
+              <!-- 幣種標題 -->
+              <div class="flex items-center justify-between mb-2">
+                <div class="flex items-center space-x-2">
+                  <CoinIcon :symbol="summary.symbol" size="sm" />
+                  <span class="font-semibold text-white">{{ summary.symbol }}</span>
+                </div>
+                <span class="text-sm text-gray-400">{{ summary.totalAmount.toFixed(4) }}</span>
+              </div>
+
+              <!-- 來源列表 -->
+              <div class="space-y-1">
+                <div v-for="source in summary.sources.filter(s => s.amount > 0.000001)" :key="source.source"
+                  class="flex justify-between items-center text-xs pl-8">
+                  <span class="text-gray-400">{{ formatSource(source.source) }}</span>
+                  <span class="text-gray-300 font-mono">{{ source.amount.toFixed(6) }}</span>
                 </div>
               </div>
-              <div class="text-right">
-                <p class="font-semibold">${{ summary.valueUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
-                </p>
-                <p class="text-sm text-gray-400">{{ summary.percentage.toFixed(2) }}%</p>
+
+            </div>
+
+            <!-- 空狀態 -->
+            <div v-if="filteredAssetsWithPercentage.length === 0"
+              class="flex items-center justify-center h-full text-gray-500">
+              <div class="text-center">
+                <p class="text-lg mb-2">📊</p>
+                <p class="text-sm">尚無資產資料</p>
               </div>
             </div>
+
           </div>
         </div>
 
+
       </div>
+
 
       <!-- Full Asset Table -->
       <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
@@ -340,15 +414,41 @@ onUnmounted(() => {
         </div>
       </div>
 
+
     </main>
+
 
     <!-- Settings Modal -->
     <SettingsModal :show="showSettings" @close="showSettings = false" />
 
+
     <!-- Toast -->
     <Toast :messages="toastStore.messages" @remove="toastStore.remove" />
+
 
     <!-- Loading Overlay -->
     <LoadingOverlay :show="assetStore.isLoading" message="查詢資產中..." />
   </div>
 </template>
+
+
+<style scoped>
+/* 自定義滾動條樣式 */
+.scrollbar-thin::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #1f2937;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: #374151;
+  border-radius: 3px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: #4b5563;
+}
+</style>
