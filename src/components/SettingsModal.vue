@@ -66,7 +66,6 @@ function handleAddExchange() {
   }
 }
 
-
 // 刪除交易所憑證
 function handleRemoveExchange(exchange: ExchangeName) {
   if (confirm(`確定要刪除 ${exchange.toUpperCase()} 的憑證嗎？`)) {
@@ -88,18 +87,16 @@ function handleAddWallet() {
       walletForm.value.chain,
       walletForm.value.address,
       walletForm.value.label || undefined,
-      walletForm.value.apiKey || undefined  
+      walletForm.value.apiKey || undefined
     )
     message.value = `✅ ${walletForm.value.chain} 地址已新增`
     walletForm.value.address = ''
     walletForm.value.label = ''
-    walletForm.value.apiKey = ''  
+    walletForm.value.apiKey = ''
   } catch (e: any) {
     message.value = `❌ ${e.message}`
   }
 }
-
-
 
 // 刪除錢包地址
 function handleRemoveWallet(id: string) {
@@ -121,97 +118,127 @@ function handleClose() {
   <Transition name="modal">
     <div v-if="show" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center p-4"
       @click.self="handleClose">
+
       <!-- Modal Container -->
       <div
-        class="bg-gray-800 rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-gray-700">
+        class="relative bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700/50">
+
+        <!-- 🔥 背景裝飾 -->
+        <div
+          class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 rounded-full blur-3xl pointer-events-none">
+        </div>
+        <div
+          class="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-500/5 to-purple-500/10 rounded-full blur-3xl pointer-events-none">
+        </div>
 
         <!-- Header -->
-        <div class="flex justify-between items-center px-6 py-4 border-b border-gray-700">
-          <h2 class="text-2xl font-bold text-white">⚙️ 設定</h2>
+        <div
+          class="relative z-10 flex justify-between items-center px-6 py-4 border-b border-slate-700/50 bg-slate-900/30 backdrop-blur-sm">
+          <h2 class="text-2xl font-bold bg-gradient-to-r from-slate-200 to-slate-400 bg-clip-text text-transparent">
+            ⚙️ 設定
+          </h2>
           <button @click="handleClose"
-            class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-700 transition text-gray-400 hover:text-white">
+            class="w-8 h-8 flex items-center justify-center rounded-lg bg-slate-700/50 hover:bg-slate-700 transition text-slate-400 hover:text-slate-200 border border-slate-600/50">
             ✕
           </button>
         </div>
 
         <!-- Tabs -->
-        <div class="flex border-b border-gray-700">
+        <div class="relative z-10 flex border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm">
           <button @click="activeTab = 'exchange'" :class="[
-            'flex-1 px-6 py-3 font-semibold transition',
+            'flex-1 px-6 py-4 font-semibold transition-all duration-300 relative',
             activeTab === 'exchange'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
+              ? 'text-indigo-300 bg-slate-800/50'
+              : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
           ]">
-            交易所 API
+            <span class="relative z-10">🏦 交易所 API</span>
+            <div v-if="activeTab === 'exchange'"
+              class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
+            </div>
           </button>
           <button @click="activeTab = 'wallet'" :class="[
-            'flex-1 px-6 py-3 font-semibold transition',
+            'flex-1 px-6 py-4 font-semibold transition-all duration-300 relative',
             activeTab === 'wallet'
-              ? 'text-blue-400 border-b-2 border-blue-400'
-              : 'text-gray-400 hover:text-gray-300'
+              ? 'text-indigo-300 bg-slate-800/50'
+              : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
           ]">
-            錢包地址
+            <span class="relative z-10">💼 錢包地址</span>
+            <div v-if="activeTab === 'wallet'"
+              class="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-indigo-500 via-violet-500 to-purple-500">
+            </div>
           </button>
         </div>
 
         <!-- Content -->
-        <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div class="relative z-10 p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
 
           <!-- 交易所 Tab -->
           <div v-show="activeTab === 'exchange'" class="space-y-6">
 
             <!-- 新增表單 -->
-            <div class="bg-gray-900/50 rounded-xl p-6 border border-gray-700">
-              <h3 class="text-lg font-bold text-white mb-4">新增交易所 API Key</h3>
+            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+              <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 bg-indigo-400 rounded-full"></span>
+                新增交易所 API Key
+              </h3>
 
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">選擇交易所</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">選擇交易所</label>
                   <select v-model="exchangeForm.exchange"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition">
                     <option value="binance">Binance</option>
                     <option value="okx">OKX</option>
                   </select>
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">API Key</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">API Key</label>
                   <input v-model="exchangeForm.apiKey" type="text" placeholder="請輸入 API Key"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">Secret Key</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">Secret Key</label>
                   <input v-model="exchangeForm.secret" type="password" placeholder="請輸入 Secret Key"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
                 </div>
 
                 <div v-if="exchangeForm.exchange === 'okx'">
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">Passphrase</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">Passphrase</label>
                   <input v-model="exchangeForm.passphrase" type="password" placeholder="請輸入 Passphrase"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <p class="text-xs text-gray-500 mt-1">💡 OKX API 需要 Passphrase（在 OKX 建立 API Key 時設定）</p>
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
+                  <p class="text-xs text-slate-500 mt-2">💡 OKX API 需要 Passphrase（在 OKX 建立 API Key 時設定）</p>
                 </div>
 
                 <button @click="handleAddExchange"
-                  class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition">
-                  儲存 API Key
+                  class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg border border-slate-600 hover:border-indigo-500/50 hover:shadow-indigo-500/20">
+                  ➕ 儲存 API Key
                 </button>
               </div>
             </div>
 
             <!-- 已儲存的憑證列表 -->
             <div v-if="credentialStore.credentials.length > 0" class="space-y-3">
-              <h3 class="text-lg font-bold text-white">已儲存的憑證</h3>
+              <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                <span class="w-2 h-2 bg-violet-400 rounded-full"></span>
+                已儲存的憑證
+              </h3>
               <div v-for="cred in credentialStore.credentials" :key="cred.id"
-                class="flex justify-between items-center p-4 bg-gray-900/50 rounded-lg border border-gray-700">
-                <div>
-                  <p class="font-semibold text-white">{{ cred.exchange.toUpperCase() }}</p>
-                  <p class="text-sm text-gray-400">ID: {{ cred.id }}</p>
+                class="flex justify-between items-center p-4 bg-slate-900/30 rounded-lg border border-slate-700/50 hover:border-slate-600/50 transition group">
+                <div class="flex items-center space-x-3">
+                  <div
+                    class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center font-bold text-sm border border-slate-600/50">
+                    {{ cred.exchange === 'binance' ? '🟡' : '🔵' }}
+                  </div>
+                  <div>
+                    <p class="font-semibold text-slate-200">{{ cred.exchange.toUpperCase() }}</p>
+                    <p class="text-xs text-slate-500">ID: {{ cred.id.slice(0, 8) }}...</p>
+                  </div>
                 </div>
                 <button @click="handleRemoveExchange(cred.exchange)"
-                  class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition">
-                  刪除
+                  class="px-3 py-2 bg-rose-950/30 hover:bg-rose-950/50 text-rose-300 rounded-lg text-sm font-semibold transition border border-rose-800/30 hover:border-rose-700/50 opacity-0 group-hover:opacity-100">
+                  🗑️ 刪除
                 </button>
               </div>
             </div>
@@ -221,14 +248,17 @@ function handleClose() {
           <div v-show="activeTab === 'wallet'" class="space-y-6">
 
             <!-- 新增表單 -->
-            <div class="bg-gray-900/50 rounded-xl p-6 border border-gray-700">
-              <h3 class="text-lg font-bold text-white mb-4">新增錢包地址</h3>
+            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+              <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
+                <span class="w-2 h-2 bg-indigo-400 rounded-full"></span>
+                新增錢包地址
+              </h3>
 
               <div class="space-y-4">
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">來源</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">來源</label>
                   <select v-model="walletForm.source"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition">
                     <option value="binance_hot">Binance Hot</option>
                     <option value="okx_hot">OKX Hot</option>
                     <!-- <option value="ledger_cold">Ledger Cold</option> V2.0 -->
@@ -236,9 +266,9 @@ function handleClose() {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">鏈</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">鏈</label>
                   <select v-model="walletForm.chain"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition">
                     <option value="BTC">Bitcoin (BTC)</option>
                     <option value="ETH">Ethereum (ETH)</option>
                     <!-- <option value="ADA">Cardano (ADA)</option> V2.0 -->
@@ -246,20 +276,21 @@ function handleClose() {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">錢包地址</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">錢包地址</label>
                   <input v-model="walletForm.address" type="text" placeholder="請輸入錢包地址"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
                 </div>
 
                 <div v-if="walletForm.chain === 'ETH'">
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">
                     Etherscan API Key（選填，建議填寫）
                   </label>
                   <input v-model="walletForm.apiKey" type="text" placeholder="選填：您的 Etherscan API Key"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-                  <p class="text-xs text-gray-500 mt-1">
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
+                  <p class="text-xs text-slate-500 mt-2">
                     💡 免費申請：
-                    <a href="https://etherscan.io/myapikey" target="_blank" class="text-blue-400 hover:underline">
+                    <a href="https://etherscan.io/myapikey" target="_blank"
+                      class="text-cyan-400 hover:text-cyan-300 underline">
                       https://etherscan.io/myapikey
                     </a>
                     （避免查詢限制）
@@ -267,40 +298,44 @@ function handleClose() {
                 </div>
 
                 <div>
-                  <label class="block text-sm font-semibold text-gray-300 mb-2">標籤（選填）</label>
+                  <label class="block text-sm font-semibold text-slate-300 mb-2">標籤（選填）</label>
                   <input v-model="walletForm.label" type="text" placeholder="例如：我的主錢包"
-                    class="w-full px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+                    class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition" />
                 </div>
 
                 <button @click="handleAddWallet"
-                  class="w-full bg-purple-600 hover:bg-purple-700 text-white font-semibold py-3 rounded-lg transition">
-                  新增地址
+                  class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg border border-slate-600 hover:border-indigo-500/50 hover:shadow-indigo-500/20">
+                  ➕ 新增地址
                 </button>
               </div>
             </div>
 
             <!-- 已儲存的錢包列表 -->
             <div v-if="walletStore.addresses.length > 0" class="space-y-3">
-              <h3 class="text-lg font-bold text-white">已儲存的錢包</h3>
+              <h3 class="text-lg font-bold text-slate-200 flex items-center gap-2">
+                <span class="w-2 h-2 bg-violet-400 rounded-full"></span>
+                已儲存的錢包
+              </h3>
               <div v-for="addr in walletStore.addresses" :key="addr.id"
-                class="p-4 bg-gray-900/50 rounded-lg border border-gray-700">
+                class="p-4 bg-slate-900/30 rounded-lg border border-slate-700/50 hover:border-slate-600/50 transition group">
                 <div class="flex justify-between items-start mb-2">
-                  <div>
+                  <div class="space-x-2">
                     <span
-                      class="inline-block px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-xs font-semibold mr-2">
+                      class="inline-block px-2 py-1 bg-indigo-600/20 text-indigo-300 rounded text-xs font-semibold border border-indigo-500/20">
                       {{ addr.source.replace('_', ' ').toUpperCase() }}
                     </span>
-                    <span class="inline-block px-2 py-1 bg-purple-600/20 text-purple-400 rounded text-xs font-semibold">
+                    <span
+                      class="inline-block px-2 py-1 bg-violet-600/20 text-violet-300 rounded text-xs font-semibold border border-violet-500/20">
                       {{ addr.chain }}
                     </span>
                   </div>
                   <button @click="handleRemoveWallet(addr.id)"
-                    class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-sm rounded transition">
-                    刪除
+                    class="px-3 py-1 bg-rose-950/30 hover:bg-rose-950/50 text-rose-300 text-sm rounded transition border border-rose-800/30 hover:border-rose-700/50 opacity-0 group-hover:opacity-100">
+                    🗑️ 刪除
                   </button>
                 </div>
-                <p class="text-sm text-gray-400 break-all font-mono">{{ addr.address }}</p>
-                <p v-if="addr.label" class="text-sm text-gray-500 mt-1">{{ addr.label }}</p>
+                <p class="text-sm text-slate-400 break-all font-mono">{{ addr.address }}</p>
+                <p v-if="addr.label" class="text-sm text-slate-500 mt-1">{{ addr.label }}</p>
               </div>
             </div>
           </div>
@@ -308,9 +343,10 @@ function handleClose() {
         </div>
 
         <!-- Footer Message -->
-        <div v-if="message" class="px-6 py-3 bg-gray-900 border-t border-gray-700">
-          <p class="text-sm text-center"
-            :class="message.includes('✅') ? 'text-green-400' : message.includes('❌') ? 'text-red-400' : 'text-gray-400'">
+        <div v-if="message"
+          class="relative z-10 px-6 py-3 bg-slate-900/30 border-t border-slate-700/50 backdrop-blur-sm">
+          <p class="text-sm text-center font-medium"
+            :class="message.includes('✅') ? 'text-green-300' : message.includes('❌') ? 'text-rose-300' : message.includes('🗑️') ? 'text-orange-300' : 'text-slate-300'">
             {{ message }}
           </p>
         </div>
@@ -321,6 +357,7 @@ function handleClose() {
 </template>
 
 <style scoped>
+/* Modal Transition */
 .modal-enter-active,
 .modal-leave-active {
   transition: opacity 0.3s ease;
@@ -331,16 +368,35 @@ function handleClose() {
   opacity: 0;
 }
 
-.modal-enter-active .bg-gray-800,
-.modal-leave-active .bg-gray-800 {
+.modal-enter-active>div>div,
+.modal-leave-active>div>div {
   transition: transform 0.3s ease;
 }
 
-.modal-enter-from .bg-gray-800 {
+.modal-enter-from>div>div {
   transform: scale(0.9);
 }
 
-.modal-leave-to .bg-gray-800 {
+.modal-leave-to>div>div {
   transform: scale(0.9);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0f172a;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #475569;
 }
 </style>

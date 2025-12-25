@@ -150,16 +150,16 @@ onUnmounted(() => {
         <div class="flex justify-between items-center">
           <div class="flex items-center space-x-3">
             <div
-              class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-xl shadow-lg">
+              class="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center font-bold text-xl border border-slate-600/50 shadow-lg">
               C
             </div>
-            <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+            <h1 class="text-2xl font-bold bg-gradient-to-r from-slate-200 to-slate-400 bg-clip-text text-transparent">
               CryptoOneView
             </h1>
           </div>
 
           <div class="flex items-center space-x-3">
-            <!-- 🔥 Refresh 按鈕 - 深灰科技感 -->
+            <!-- 🔥 Refresh 按鈕 - 深灰 + 青色 accent -->
             <button @click="handleRefresh" :disabled="assetStore.isLoading"
               class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-cyan-500/50 disabled:border-slate-800 shadow-lg hover:shadow-cyan-500/20 overflow-hidden">
               <!-- 發光效果 -->
@@ -176,17 +176,17 @@ onUnmounted(() => {
             <button @click="showSettings = true"
               class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-slate-600 shadow-lg">
               <span class="flex items-center gap-2">
-                <span class="text-slate-400 group-hover:text-slate-300 transition-colors">⚙</span>
+                <span class="text-slate-400 group-hover:text-slate-300">⚙</span>
                 <span class="text-slate-200">Settings</span>
               </span>
             </button>
 
-            <!-- 🔥 Lock 按鈕 - 暗紅科技感 -->
+            <!-- 🔥 Lock 按鈕 - 暗紅 -->
             <button @click="handleLogout"
               class="group relative px-4 py-2 bg-slate-800 hover:bg-rose-950/50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-rose-800/50 shadow-lg hover:shadow-rose-900/30">
               <span class="flex items-center gap-2">
-                <span class="text-rose-400 group-hover:text-rose-300 transition-colors">🔒</span>
-                <span class="text-slate-200 group-hover:text-rose-200 transition-colors">Lock</span>
+                <span class="text-rose-400 group-hover:text-rose-300">🔒</span>
+                <span class="text-slate-200 group-hover:text-rose-200">Lock</span>
               </span>
             </button>
           </div>
@@ -288,15 +288,31 @@ onUnmounted(() => {
         </div>
       </div>
 
-      <!-- 🎨 Total Balance Card - 保留原配色 -->
-      <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-8 shadow-2xl">
-        <p class="text-sm text-white/80 mb-2">總資產價值</p>
-        <p class="text-5xl font-bold mb-4">
-          ${{ filteredTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
-        </p>
-        <p v-if="assetStore.lastUpdated" class="text-sm text-white/70">
-          上次更新：{{ new Date(assetStore.lastUpdated).toLocaleString('zh-TW') }}
-        </p>
+      <!-- Total Balance Card - 🔥 藍紫神秘漸層 -->
+      <div
+        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950/40 to-violet-950/30 rounded-xl p-8 shadow-2xl border border-indigo-500/20">
+        <!-- 背景裝飾 -->
+        <div
+          class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 rounded-full blur-3xl">
+        </div>
+        <div
+          class="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-500/5 to-purple-500/10 rounded-full blur-3xl">
+        </div>
+
+        <!-- 內容 -->
+        <div class="relative z-10">
+          <p class="text-sm text-indigo-300/80 mb-2 flex items-center gap-2">
+            <span class="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></span>
+            總資產價值
+          </p>
+          <p
+            class="text-5xl font-bold mb-4 bg-gradient-to-r from-indigo-200 via-violet-200 to-purple-200 bg-clip-text text-transparent">
+            ${{ filteredTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+          </p>
+          <p v-if="assetStore.lastUpdated" class="text-sm text-slate-400">
+            上次更新：{{ new Date(assetStore.lastUpdated).toLocaleString('zh-TW') }}
+          </p>
+        </div>
       </div>
 
       <!-- 空狀態提示 -->
@@ -306,46 +322,46 @@ onUnmounted(() => {
         <div class="max-w-md mx-auto space-y-6">
           <div class="text-6xl">🚀</div>
           <div>
-            <h3 class="text-2xl font-bold text-white mb-2">歡迎使用 CryptoOneView</h3>
-            <p class="text-gray-400">開始統一管理您的加密資產</p>
+            <h3 class="text-2xl font-bold text-slate-100 mb-2">歡迎使用 CryptoOneView</h3>
+            <p class="text-slate-400">開始統一管理您的加密資產</p>
           </div>
 
           <div class="space-y-4 text-left">
             <div class="flex items-start space-x-3">
               <span class="text-2xl">1️⃣</span>
               <div>
-                <p class="font-semibold text-white">新增資料來源</p>
-                <p class="text-sm text-gray-400">點擊右上角 Settings，新增交易所 API Key 或錢包地址</p>
+                <p class="font-semibold text-slate-200">新增資料來源</p>
+                <p class="text-sm text-slate-400">點擊右上角 Settings，新增交易所 API Key 或錢包地址</p>
               </div>
             </div>
 
             <div class="flex items-start space-x-3">
               <span class="text-2xl">2️⃣</span>
               <div>
-                <p class="font-semibold text-white">查詢資產</p>
-                <p class="text-sm text-gray-400">點擊 Refresh 按鈕，系統會自動查詢並彙整您的資產</p>
+                <p class="font-semibold text-slate-200">查詢資產</p>
+                <p class="text-sm text-slate-400">點擊 Refresh 按鈕，系統會自動查詢並彙整您的資產</p>
               </div>
             </div>
 
             <div class="flex items-start space-x-3">
               <span class="text-2xl">3️⃣</span>
               <div>
-                <p class="font-semibold text-white">查看統計</p>
-                <p class="text-sm text-gray-400">透過圖表和表格，一目了然掌握資產配置</p>
+                <p class="font-semibold text-slate-200">查看統計</p>
+                <p class="text-sm text-slate-400">透過圖表和表格，一目了然掌握資產配置</p>
               </div>
             </div>
           </div>
 
           <button @click="showSettings = true"
-            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg">
+            class="w-full bg-slate-700 hover:bg-slate-600 text-slate-100 font-semibold py-3 px-6 rounded-lg transition-all duration-300 shadow-lg border border-slate-600">
             開始設定 →
           </button>
 
-          <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
+          <div class="bg-slate-900/50 border border-slate-700 rounded-lg p-4">
             <div class="flex items-start space-x-3">
-              <span class="text-yellow-500 text-lg">💡</span>
-              <div class="text-xs text-gray-400 text-left space-y-1">
-                <p><strong>安全提示：</strong></p>
+              <span class="text-cyan-400 text-lg">💡</span>
+              <div class="text-xs text-slate-400 text-left space-y-1">
+                <p><strong class="text-slate-300">安全提示：</strong></p>
                 <p>• 所有資料加密儲存在您的瀏覽器中</p>
                 <p>• API Key 請使用 Read-Only 權限</p>
                 <p>• 系統不會傳送您的資料到任何第三方</p>
@@ -360,15 +376,14 @@ onUnmounted(() => {
 
         <!-- Asset Allocation -->
         <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
-          <h3 class="text-lg font-bold mb-4">資產配置</h3>
+          <h3 class="text-lg font-bold mb-4 text-slate-200">資產配置</h3>
           <AssetChart :assets="filteredAssetsWithPercentage" />
         </div>
 
         <!-- 來源分布 -->
         <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
-          <h3 class="text-lg font-bold mb-4">來源分布</h3>
+          <h3 class="text-lg font-bold mb-4 text-slate-200">來源分布</h3>
 
-          <!-- 限制高度與圓餅圖一致，並加上滾動 -->
           <div
             class="h-64 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
 
@@ -379,17 +394,17 @@ onUnmounted(() => {
               <div class="flex items-center justify-between mb-2">
                 <div class="flex items-center space-x-2">
                   <CoinIcon :symbol="summary.symbol" size="sm" />
-                  <span class="font-semibold text-white">{{ summary.symbol }}</span>
+                  <span class="font-semibold text-slate-200">{{ summary.symbol }}</span>
                 </div>
-                <span class="text-sm text-gray-400">{{ summary.totalAmount.toFixed(4) }}</span>
+                <span class="text-sm text-slate-400">{{ summary.totalAmount.toFixed(4) }}</span>
               </div>
 
               <!-- 來源列表 -->
               <div class="space-y-1">
                 <div v-for="source in summary.sources.filter(s => s.amount > DUST_THRESHOLD)" :key="source.source"
                   class="flex justify-between items-center text-xs pl-8">
-                  <span class="text-gray-400">{{ formatSource(source.source) }}</span>
-                  <span class="text-gray-300 font-mono">{{ source.amount.toFixed(6) }}</span>
+                  <span class="text-slate-500">{{ formatSource(source.source) }}</span>
+                  <span class="text-slate-400 font-mono">{{ source.amount.toFixed(6) }}</span>
                 </div>
               </div>
 
@@ -397,7 +412,7 @@ onUnmounted(() => {
 
             <!-- 空狀態 -->
             <div v-if="filteredAssetsWithPercentage.length === 0"
-              class="flex items-center justify-center h-full text-gray-500">
+              class="flex items-center justify-center h-full text-slate-500">
               <div class="text-center">
                 <p class="text-lg mb-2">📊</p>
                 <p class="text-sm">尚無資產資料</p>
@@ -412,19 +427,19 @@ onUnmounted(() => {
       <!-- Full Asset Table -->
       <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
         <div class="px-6 py-4 border-b border-slate-700/50">
-          <h3 class="text-lg font-bold">所有資產</h3>
+          <h3 class="text-lg font-bold text-slate-200">所有資產</h3>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-slate-900/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">資產</th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">數量</th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">單價 (USD)
+                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">資產</th>
+                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">數量</th>
+                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">單價 (USD)
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">價值 (USD)
+                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">價值 (USD)
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">佔比</th>
+                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">佔比</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-700/30">
@@ -433,20 +448,21 @@ onUnmounted(() => {
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
                     <CoinIcon :symbol="summary.symbol" size="sm" />
-                    <span class="font-semibold">{{ summary.symbol }}</span>
+                    <span class="font-semibold text-slate-200">{{ summary.symbol }}</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-sm">
+                <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-sm text-slate-300">
                   {{ summary.totalAmount.toFixed(8) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
+                <td class="px-6 py-4 whitespace-nowrap text-right text-slate-300">
                   ${{ summary.priceUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right font-semibold">
+                <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-slate-200">
                   ${{ summary.valueUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </td>
                 <td class="px-6 py-4 whitespace-nowrap text-right">
-                  <span class="px-2 py-1 bg-blue-600/20 text-blue-400 rounded text-sm font-semibold">
+                  <span
+                    class="px-2 py-1 bg-cyan-500/10 text-cyan-300 rounded text-sm font-semibold border border-cyan-500/20">
                     {{ summary.percentage.toFixed(2) }}%
                   </span>
                 </td>
@@ -470,7 +486,7 @@ onUnmounted(() => {
 </template>
 
 <style scoped>
-/* 自定義滾動條樣式 */
+/* 自定義滾動條 */
 .scrollbar-thin::-webkit-scrollbar {
   width: 6px;
 }
@@ -489,7 +505,7 @@ onUnmounted(() => {
   background: #475569;
 }
 
-/* Button 動畫效果 */
+/* Button 動畫 */
 button {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
