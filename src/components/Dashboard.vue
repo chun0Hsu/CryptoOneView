@@ -18,7 +18,6 @@ const toastStore = useToastStore()
 const walletStore = useWalletStore()
 const credentialStore = useCredentialStore()
 
-// 🔥 常量：塵埃過濾閾值
 const DUST_THRESHOLD = 0.000001
 
 // 來源過濾器（預設全選）
@@ -30,12 +29,12 @@ const sourceFilters = ref({
   ledger_cold: true
 })
 
-// 🆕 檢查是否全選
+// 檢查是否全選
 const isAllSelected = computed(() => {
   return Object.values(sourceFilters.value).every(v => v === true)
 })
 
-// 🆕 全選/取消全選
+// 全選/取消全選
 function toggleSelectAll() {
   const newValue = !isAllSelected.value
   Object.keys(sourceFilters.value).forEach(key => {
@@ -43,34 +42,28 @@ function toggleSelectAll() {
   })
 }
 
-// 🆕 切換單一來源
+// 切換單一來源
 function toggleSource(source: keyof typeof sourceFilters.value) {
   sourceFilters.value[source] = !sourceFilters.value[source]
 }
 
 // 根據 Filter 過濾資產
 const filteredAssets = computed(() => {
-  // 取得所有啟用的來源
   const enabledSources = Object.entries(sourceFilters.value)
     .filter(([_, enabled]) => enabled)
     .map(([source, _]) => source as SourceType)
 
-  // 如果全部都沒勾選，就顯示全部
   if (enabledSources.length === 0) {
     return assetStore.assetSummaries
   }
 
-  // 過濾資產：只保留來源符合的
   return assetStore.assetSummaries.map(summary => {
-    // 過濾該幣種的來源
     const filteredSources = summary.sources.filter(s =>
       enabledSources.includes(s.source)
     )
 
-    // 重新計算數量
     const totalAmount = filteredSources.reduce((sum, s) => sum + s.amount, 0)
 
-    // 如果過濾後數量為 0，就不顯示這個幣種
     if (totalAmount === 0) return null
 
     return {
@@ -136,14 +129,12 @@ function handleUserActivity() {
 const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart']
 
 onMounted(() => {
-  // 註冊所有活動事件監聽器
   activityEvents.forEach(event => {
     window.addEventListener(event, handleUserActivity)
   })
 })
 
 onUnmounted(() => {
-  // 清除所有事件監聽器
   activityEvents.forEach(event => {
     window.removeEventListener(event, handleUserActivity)
   })
@@ -159,7 +150,7 @@ onUnmounted(() => {
         <div class="flex justify-between items-center">
           <div class="flex items-center space-x-3">
             <div
-              class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-xl">
+              class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center font-bold text-xl shadow-lg">
               C
             </div>
             <h1 class="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
@@ -167,20 +158,36 @@ onUnmounted(() => {
             </h1>
           </div>
 
-          <div class="flex items-center space-x-4">
+          <div class="flex items-center space-x-3">
+            <!-- 🔥 Refresh 按鈕 - 深灰科技感 -->
             <button @click="handleRefresh" :disabled="assetStore.isLoading"
-              class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded-lg font-semibold transition flex items-center space-x-2">
-              <span>{{ assetStore.isLoading ? '⟳ 更新中...' : '🔄 Refresh' }}</span>
+              class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-cyan-500/50 disabled:border-slate-800 shadow-lg hover:shadow-cyan-500/20 overflow-hidden">
+              <!-- 發光效果 -->
+              <div
+                class="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+              </div>
+              <span class="relative flex items-center gap-2">
+                <span class="text-cyan-400">{{ assetStore.isLoading ? '⟳' : '↻' }}</span>
+                <span class="text-slate-200">{{ assetStore.isLoading ? '更新中...' : 'Refresh' }}</span>
+              </span>
             </button>
 
+            <!-- 🔥 Settings 按鈕 - 深灰 -->
             <button @click="showSettings = true"
-              class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition">
-              ⚙️ Settings
+              class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-slate-600 shadow-lg">
+              <span class="flex items-center gap-2">
+                <span class="text-slate-400 group-hover:text-slate-300 transition-colors">⚙</span>
+                <span class="text-slate-200">Settings</span>
+              </span>
             </button>
 
+            <!-- 🔥 Lock 按鈕 - 暗紅科技感 -->
             <button @click="handleLogout"
-              class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition">
-              🔒 Lock
+              class="group relative px-4 py-2 bg-slate-800 hover:bg-rose-950/50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-rose-800/50 shadow-lg hover:shadow-rose-900/30">
+              <span class="flex items-center gap-2">
+                <span class="text-rose-400 group-hover:text-rose-300 transition-colors">🔒</span>
+                <span class="text-slate-200 group-hover:text-rose-200 transition-colors">Lock</span>
+              </span>
             </button>
           </div>
         </div>
@@ -190,86 +197,98 @@ onUnmounted(() => {
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-      <!-- 🔥 Filter Bar - 新版 Button 風格 -->
-      <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-        <h3 class="text-sm font-semibold text-gray-400 mb-3">資料來源篩選</h3>
-        <div class="flex flex-wrap gap-3">
+      <!-- 🔥 Filter Bar - 深色科技感 -->
+      <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 shadow-xl">
+        <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">資料來源篩選</h3>
+        <div class="flex flex-wrap gap-2">
 
           <!-- 全選按鈕 -->
           <button @click="toggleSelectAll" :class="[
-            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
             isAllSelected
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700'
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              ? 'bg-slate-700 border-cyan-500/50 text-cyan-100 shadow-lg shadow-cyan-500/20'
+              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
           ]">
-            <span class="mr-2">{{ isAllSelected ? '✓' : '○' }}</span>
-            全選
+            <!-- 發光效果 -->
+            <div v-if="isAllSelected"
+              class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/5 to-transparent"></div>
+            <span class="relative flex items-center gap-2">
+              <span :class="isAllSelected ? 'text-cyan-400' : 'text-slate-500'">{{ isAllSelected ? '✓' : '○' }}</span>
+              <span>全選</span>
+            </span>
           </button>
 
           <!-- 分隔線 -->
-          <div class="w-px bg-gray-700 self-stretch"></div>
+          <div class="w-px bg-slate-700 self-stretch mx-1"></div>
 
           <!-- Binance CEX -->
           <button @click="toggleSource('binance_cex')" :class="[
-            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
             sourceFilters.binance_cex
-              ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-600/30 hover:bg-yellow-700'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+              ? 'bg-slate-700 border-amber-500/50 text-amber-100 shadow-lg shadow-amber-500/20'
+              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
           ]">
-            <span class="mr-2">{{ sourceFilters.binance_cex ? '✓' : '○' }}</span>
-            Binance CEX
+            <div v-if="sourceFilters.binance_cex"
+              class="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent"></div>
+            <span class="relative flex items-center gap-2">
+              <span :class="sourceFilters.binance_cex ? 'text-amber-400' : 'text-slate-500'">{{
+                sourceFilters.binance_cex ? '✓' : '○' }}</span>
+              <span>Binance CEX</span>
+            </span>
           </button>
 
           <!-- OKX CEX -->
           <button @click="toggleSource('okx_cex')" :class="[
-            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
             sourceFilters.okx_cex
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+              ? 'bg-slate-700 border-blue-500/50 text-blue-100 shadow-lg shadow-blue-500/20'
+              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
           ]">
-            <span class="mr-2">{{ sourceFilters.okx_cex ? '✓' : '○' }}</span>
-            OKX CEX
+            <div v-if="sourceFilters.okx_cex"
+              class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent"></div>
+            <span class="relative flex items-center gap-2">
+              <span :class="sourceFilters.okx_cex ? 'text-blue-400' : 'text-slate-500'">{{ sourceFilters.okx_cex ? '✓' :
+                '○' }}</span>
+              <span>OKX CEX</span>
+            </span>
           </button>
 
           <!-- Binance Hot -->
           <button @click="toggleSource('binance_hot')" :class="[
-            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
             sourceFilters.binance_hot
-              ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30 hover:bg-orange-700'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+              ? 'bg-slate-700 border-orange-500/50 text-orange-100 shadow-lg shadow-orange-500/20'
+              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
           ]">
-            <span class="mr-2">{{ sourceFilters.binance_hot ? '✓' : '○' }}</span>
-            Binance Hot
+            <div v-if="sourceFilters.binance_hot"
+              class="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent"></div>
+            <span class="relative flex items-center gap-2">
+              <span :class="sourceFilters.binance_hot ? 'text-orange-400' : 'text-slate-500'">{{
+                sourceFilters.binance_hot ? '✓' : '○' }}</span>
+              <span>Binance Hot</span>
+            </span>
           </button>
 
           <!-- OKX Hot -->
           <button @click="toggleSource('okx_hot')" :class="[
-            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
             sourceFilters.okx_hot
-              ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 hover:bg-cyan-700'
-              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+              ? 'bg-slate-700 border-teal-500/50 text-teal-100 shadow-lg shadow-teal-500/20'
+              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
           ]">
-            <span class="mr-2">{{ sourceFilters.okx_hot ? '✓' : '○' }}</span>
-            OKX Hot
+            <div v-if="sourceFilters.okx_hot"
+              class="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/5 to-transparent"></div>
+            <span class="relative flex items-center gap-2">
+              <span :class="sourceFilters.okx_hot ? 'text-teal-400' : 'text-slate-500'">{{ sourceFilters.okx_hot ? '✓' :
+                '○' }}</span>
+              <span>OKX Hot</span>
+            </span>
           </button>
-
-          <!-- Ledger Cold (暫時註解，未來可啟用) -->
-          <!-- <button 
-            @click="toggleSource('ledger_cold')"
-            :class="[
-              'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
-              sourceFilters.ledger_cold
-                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 hover:bg-purple-700' 
-                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-            ]">
-            <span class="mr-2">{{ sourceFilters.ledger_cold ? '✓' : '○' }}</span>
-            Ledger Cold
-          </button> -->
 
         </div>
       </div>
 
-      <!-- Total Balance Card -->
+      <!-- 🎨 Total Balance Card - 保留原配色 -->
       <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-8 shadow-2xl">
         <p class="text-sm text-white/80 mb-2">總資產價值</p>
         <p class="text-5xl font-bold mb-4">
@@ -283,7 +302,7 @@ onUnmounted(() => {
       <!-- 空狀態提示 -->
       <div
         v-if="!assetStore.lastUpdated && credentialStore.credentials.length === 0 && walletStore.addresses.length === 0"
-        class="bg-gray-800 rounded-xl p-8 border border-gray-700 text-center">
+        class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-8 border border-slate-700/50 text-center shadow-xl">
         <div class="max-w-md mx-auto space-y-6">
           <div class="text-6xl">🚀</div>
           <div>
@@ -340,21 +359,21 @@ onUnmounted(() => {
       <div class="grid lg:grid-cols-2 gap-6">
 
         <!-- Asset Allocation -->
-        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
           <h3 class="text-lg font-bold mb-4">資產配置</h3>
           <AssetChart :assets="filteredAssetsWithPercentage" />
         </div>
 
         <!-- 來源分布 -->
-        <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
           <h3 class="text-lg font-bold mb-4">來源分布</h3>
 
           <!-- 限制高度與圓餅圖一致，並加上滾動 -->
           <div
-            class="h-64 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-gray-700 scrollbar-track-gray-800">
+            class="h-64 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
 
             <div v-for="summary in filteredAssetsWithPercentage" :key="summary.symbol"
-              class="bg-gray-700/30 rounded-lg p-3 hover:bg-gray-700/50 transition">
+              class="bg-slate-900/50 rounded-lg p-3 hover:bg-slate-900/80 transition border border-slate-700/30">
 
               <!-- 幣種標題 -->
               <div class="flex items-center justify-between mb-2">
@@ -391,13 +410,13 @@ onUnmounted(() => {
       </div>
 
       <!-- Full Asset Table -->
-      <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
-        <div class="px-6 py-4 border-b border-gray-700">
+      <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
+        <div class="px-6 py-4 border-b border-slate-700/50">
           <h3 class="text-lg font-bold">所有資產</h3>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
-            <thead class="bg-gray-900/50">
+            <thead class="bg-slate-900/50">
               <tr>
                 <th class="px-6 py-3 text-left text-xs font-semibold text-gray-400 uppercase tracking-wider">資產</th>
                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">數量</th>
@@ -408,9 +427,9 @@ onUnmounted(() => {
                 <th class="px-6 py-3 text-right text-xs font-semibold text-gray-400 uppercase tracking-wider">佔比</th>
               </tr>
             </thead>
-            <tbody class="divide-y divide-gray-700">
+            <tbody class="divide-y divide-slate-700/30">
               <tr v-for="summary in filteredAssetsWithPercentage" :key="summary.symbol"
-                class="hover:bg-gray-700/30 transition">
+                class="hover:bg-slate-900/30 transition">
                 <td class="px-6 py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
                     <CoinIcon :symbol="summary.symbol" size="sm" />
@@ -457,25 +476,25 @@ onUnmounted(() => {
 }
 
 .scrollbar-thin::-webkit-scrollbar-track {
-  background: #1f2937;
+  background: #0f172a;
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #374151;
+  background: #334155;
   border-radius: 3px;
 }
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
-  background: #4b5563;
+  background: #475569;
 }
 
 /* Button 動畫效果 */
 button {
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 button:active {
-  transform: scale(0.95);
+  transform: scale(0.98);
 }
 </style>
