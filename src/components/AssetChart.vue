@@ -97,7 +97,7 @@ const chartOptions: ChartOptions<'doughnut'> = {
         font: {
           size: 13,
           family: 'system-ui, -apple-system, sans-serif',
-          weight: '500'
+          weight: 500
         },
         generateLabels: (chart) => {
           const data = chart.data
