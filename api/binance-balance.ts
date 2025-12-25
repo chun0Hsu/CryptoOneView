@@ -6,6 +6,13 @@ interface RequestBody {
   secret: string
 }
 
+interface BinanceBalance {
+  symbol: string
+  free: number
+  locked: number
+  total: number
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -55,29 +62,28 @@ export default async function handler(
 
     const data = await response.json()
 
-    const supportedSymbols = ['BTC', 'ETH', 'ADA', 'USDT', 'USDC']
-    const balances: any[] = []
+    // 🔥 改為動態：抓取所有非零餘額
+    const balances: BinanceBalance[] = []
 
     for (const balance of data.balances) {
-      if (supportedSymbols.includes(balance.asset)) {
-        const free = parseFloat(balance.free)
-        const locked = parseFloat(balance.locked)
-        const total = free + locked
+      const free = parseFloat(balance.free)
+      const locked = parseFloat(balance.locked)
+      const total = free + locked
 
-        if (total > 0) {
-          balances.push({
-            symbol: balance.asset,
-            free,
-            locked,
-            total
-          })
-        }
+      // 只保留有餘額的幣種
+      if (total > 0) {
+        balances.push({
+          symbol: balance.asset,
+          free,
+          locked,
+          total
+        })
       }
     }
 
     return res.status(200).json({ balances })
   } catch (error: any) {
-    console.error('Function error:', error)
+    console.error('Binance balance error:', error)
     return res.status(500).json({
       error: error.message || 'Internal server error'
     })

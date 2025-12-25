@@ -6,6 +6,44 @@ interface RequestBody {
   secret: string
 }
 
+interface EarnBalance {
+  symbol: string
+  amount: number
+  type: 'flexible' | 'locked'
+}
+
+// 建立簽名
+function createSignature(queryString: string, secret: string): string {
+  return crypto.createHmac('sha256', secret).update(queryString).digest('hex')
+}
+
+// 呼叫 Binance API
+async function callBinanceAPI(
+  endpoint: string,
+  params: Record<string, any>,
+  apiKey: string,
+  secret: string
+): Promise<any> {
+  const timestamp = Date.now()
+  const queryString = new URLSearchParams({
+    ...params,
+    timestamp: timestamp.toString()
+  }).toString()
+
+  const signature = createSignature(queryString, secret)
+  const url = `https://api.binance.com${endpoint}?${queryString}&signature=${signature}`
+
+  const response = await fetch(url, {
+    headers: { 'X-MBX-APIKEY': apiKey }
+  })
+
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`)
+  }
+
+  return response.json()
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -30,71 +68,61 @@ export default async function handler(
       return res.status(400).json({ error: 'Missing apiKey or secret' })
     }
 
-    const timestamp = Date.now()
-    const queryString = `timestamp=${timestamp}`
-    const signature = crypto
-      .createHmac('sha256', secret)
-      .update(queryString)
-      .digest('hex')
+    const balances: EarnBalance[] = []
 
-    const url = `https://api.binance.com/sapi/v1/lending/union/account?${queryString}&signature=${signature}`
+    // 🔥 1. 查詢活期理財 (Flexible)
+    try {
+      const flexibleData = await callBinanceAPI(
+        '/sapi/v1/simple-earn/flexible/position',
+        { size: 100 },  // 最多 100 筆
+        apiKey,
+        secret
+      )
 
-    const response = await fetch(url, {
-      headers: {
-        'X-MBX-APIKEY': apiKey
-      }
-    })
-
-    // 檢查 Content-Type
-    const contentType = response.headers.get('content-type')
-
-    if (!response.ok) {
-      // 嘗試解析錯誤訊息
-      let errorMessage = 'Binance Earn API error'
-
-      if (contentType?.includes('application/json')) {
-        try {
-          const errorData = await response.json()
-          errorMessage = errorData.msg || errorMessage
-        } catch {
-          // JSON 解析失敗，使用預設錯誤訊息
-        }
-      } else {
-        // 不是 JSON，讀取文字
-        const errorText = await response.text()
-        errorMessage = errorText.substring(0, 100) // 只取前 100 字元
-      }
-
-      // Earn API 失敗不算嚴重錯誤，返回空結果
-      console.log(`Binance Earn API failed: ${errorMessage}`)
-      return res.status(200).json({ balances: [] })
-    }
-
-    // 檢查是否為 JSON
-    if (!contentType?.includes('application/json')) {
-      console.log('Binance Earn API returned non-JSON response')
-      return res.status(200).json({ balances: [] })
-    }
-
-    const data = await response.json()
-
-    const supportedSymbols = ['BTC', 'ETH', 'ADA', 'USDT', 'USDC']
-    const balances: any[] = []
-
-    for (const item of data.positionAmountVos || []) {
-      if (supportedSymbols.includes(item.asset)) {
-        const amount = parseFloat(item.amount || '0')
-        if (amount > 0) {
-          balances.push({
-            symbol: item.asset,
-            amount,
-            type: 'flexible'
-          })
+      if (flexibleData.rows && Array.isArray(flexibleData.rows)) {
+        for (const item of flexibleData.rows) {
+          const amount = parseFloat(item.totalAmount || '0')
+          if (amount > 0) {
+            balances.push({
+              symbol: item.asset,
+              amount,
+              type: 'flexible'
+            })
+          }
         }
       }
+    } catch (e: any) {
+      console.warn('Binance Flexible Earn failed:', e.message)
     }
 
+    // 🔥 2. 查詢定期理財 (Locked)
+    try {
+      const lockedData = await callBinanceAPI(
+        '/sapi/v1/simple-earn/locked/position',
+        { size: 100 },
+        apiKey,
+        secret
+      )
+
+      if (lockedData.rows && Array.isArray(lockedData.rows)) {
+        for (const item of lockedData.rows) {
+          const amount = parseFloat(item.amount || '0')
+          if (amount > 0) {
+            balances.push({
+              symbol: item.asset,
+              amount,
+              type: 'locked'
+            })
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn('Binance Locked Earn failed:', e.message)
+    }
+
+    // 即使查詢失敗也返回成功（但 balances 可能為空）
     return res.status(200).json({ balances })
+
   } catch (error: any) {
     console.error('Binance Earn function error:', error)
     // Earn 查詢失敗不應該影響主要功能，返回空結果

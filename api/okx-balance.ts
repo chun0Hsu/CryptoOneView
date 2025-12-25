@@ -7,6 +7,13 @@ interface RequestBody {
   passphrase: string
 }
 
+interface OKXBalance {
+  symbol: string
+  free: number
+  locked: number
+  total: number
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -33,7 +40,7 @@ export default async function handler(
 
     const timestamp = new Date().toISOString()
     const method = 'GET'
-    const requestPath = '/api/v5/account/balance'
+    const requestPath = '/api/v5/account/balance'  // 🔥 不帶 ccy 參數，獲取所有資產
     const message = timestamp + method + requestPath
     const signature = crypto
       .createHmac('sha256', secret)
@@ -62,28 +69,26 @@ export default async function handler(
       return res.status(400).json({ error: data.msg || 'OKX API error' })
     }
 
-    const supportedSymbols = ['BTC', 'ETH', 'ADA', 'USDT', 'USDC']
-    const balances: any[] = []
+    // 🔥 動態抓取所有非零餘額
+    const balances: OKXBalance[] = []
 
     for (const account of data.data || []) {
       for (const detail of account.details || []) {
-        if (supportedSymbols.includes(detail.ccy)) {
-          const total = parseFloat(detail.cashBal || '0')
-          if (total > 0) {
-            balances.push({
-              symbol: detail.ccy,
-              free: total,
-              locked: 0,
-              total
-            })
-          }
+        const total = parseFloat(detail.cashBal || '0')
+        if (total > 0) {
+          balances.push({
+            symbol: detail.ccy,
+            free: total,
+            locked: 0,
+            total
+          })
         }
       }
     }
 
     return res.status(200).json({ balances })
   } catch (error: any) {
-    console.error('Function error:', error)
+    console.error('OKX balance error:', error)
     return res.status(500).json({
       error: error.message || 'Internal server error'
     })

@@ -7,6 +7,12 @@ interface RequestBody {
   passphrase: string
 }
 
+interface EarnBalance {
+  symbol: string
+  amount: number
+  type: string
+}
+
 export default async function handler(
   req: VercelRequest,
   res: VercelResponse
@@ -33,7 +39,7 @@ export default async function handler(
 
     const timestamp = new Date().toISOString()
     const method = 'GET'
-    const requestPath = '/api/v5/finance/savings/balance'
+    const requestPath = '/api/v5/finance/savings/balance'  // 🔥 餘幣寶
     const message = timestamp + method + requestPath
     const signature = crypto
       .createHmac('sha256', secret)
@@ -52,44 +58,35 @@ export default async function handler(
       }
     })
 
-    const contentType = response.headers.get('content-type')
-
     if (!response.ok) {
-      console.log(`OKX Earn API failed with status ${response.status}`)
-      return res.status(200).json({ balances: [] })
-    }
-
-    if (!contentType?.includes('application/json')) {
-      console.log('OKX Earn API returned non-JSON response')
+      console.warn('OKX Earn API failed')
       return res.status(200).json({ balances: [] })
     }
 
     const data = await response.json()
 
     if (data.code !== '0') {
-      console.log(`OKX Earn API error: ${data.msg}`)
+      console.warn('OKX Earn API error:', data.msg)
       return res.status(200).json({ balances: [] })
     }
 
-    const supportedSymbols = ['BTC', 'ETH', 'ADA', 'USDT', 'USDC']
-    const balances: any[] = []
+    const balances: EarnBalance[] = []
 
+    // 解析餘幣寶餘額
     for (const item of data.data || []) {
-      if (supportedSymbols.includes(item.ccy)) {
-        const amount = parseFloat(item.amt || '0')
-        if (amount > 0) {
-          balances.push({
-            symbol: item.ccy,
-            amount,
-            type: 'savings'
-          })
-        }
+      const amount = parseFloat(item.amt || '0')
+      if (amount > 0) {
+        balances.push({
+          symbol: item.ccy,
+          amount,
+          type: 'savings'
+        })
       }
     }
 
     return res.status(200).json({ balances })
   } catch (error: any) {
-    console.error('OKX Earn function error:', error)
+    console.error('OKX Earn error:', error)
     return res.status(200).json({ balances: [] })
   }
 }

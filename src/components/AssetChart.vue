@@ -17,20 +17,58 @@ const props = defineProps<{
   assets: AssetSummary[]
 }>()
 
-// 顏色配置（根據幣種）
+// 🔥 擴充顏色配置（支援更多幣種）
 const colorMap: Record<string, string> = {
-  BTC: '#F7931A',
-  ETH: '#627EEA',
-  ADA: '#0033AD',
-  USDT: '#26A17B',
-  USDC: '#2775CA'
+  'BTC': '#F7931A',    // 橙色
+  'ETH': '#627EEA',    // 藍色
+  'USDT': '#26A17B',   // 綠色
+  'USDC': '#2775CA',   // 藍色
+  'BNB': '#F3BA2F',    // 黃色
+  'ADA': '#0033AD',    // 深藍
+  'ASTER': '#E4007F',  // 桃紅 (Astar)
+  'USD1': '#27AE60',   // 綠色
+}
+
+// 🔥 動態顏色生成器（當 colorMap 沒有定義時）
+function generateColor(symbol: string, index: number): string {
+  // 如果已定義顏色，直接返回
+  if (colorMap[symbol]) {
+    return colorMap[symbol]
+  }
+
+  // 預定義的漂亮顏色池（16 種）
+  const colorPalette = [
+    '#FF6384', // 粉紅
+    '#36A2EB', // 藍色
+    '#FFCE56', // 黃色
+    '#4BC0C0', // 青色
+    '#9966FF', // 紫色
+    '#FF9F40', // 橙色
+    '#FF6384', // 粉紅
+    '#C9CBCF', // 灰色
+    '#4BC0C0', // 青色
+    '#FF6384', // 粉紅
+    '#36A2EB', // 藍色
+    '#FFCE56', // 黃色
+    '#E7E9ED', // 淺灰
+    '#71B37C', // 綠色
+    '#EC6B56', // 紅色
+    '#FFC154', // 金色
+  ]
+
+  // 使用 index 或根據幣種名稱生成顏色
+  return colorPalette[index % colorPalette.length]
 }
 
 // Chart.js 資料
 const chartData = computed(() => {
   const labels = props.assets.map(a => a.symbol)
   const data = props.assets.map(a => a.valueUSD)
-  const backgroundColor = props.assets.map(a => colorMap[a.symbol] || '#6B7280')
+
+  // 🔥 動態生成顏色
+  const backgroundColor = props.assets.map((asset, index) =>
+    generateColor(asset.symbol, index)
+  )
 
   return {
     labels,
@@ -54,11 +92,12 @@ const chartOptions: ChartOptions<'doughnut'> = {
     legend: {
       position: 'right',
       labels: {
-        color: '#F3F4F6',  
+        color: '#F3F4F6',
         padding: 12,
         font: {
           size: 13,
-          family: 'system-ui, -apple-system, sans-serif'
+          family: 'system-ui, -apple-system, sans-serif',
+          weight: '500'
         },
         generateLabels: (chart) => {
           const data = chart.data
@@ -74,7 +113,7 @@ const chartOptions: ChartOptions<'doughnut'> = {
                 fillStyle: dataset.backgroundColor?.[i] as string,
                 hidden: false,
                 index: i,
-                fontColor: '#F3F4F6'  
+                fontColor: '#F3F4F6'
               }
             })
           }

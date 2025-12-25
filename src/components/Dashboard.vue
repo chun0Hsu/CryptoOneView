@@ -12,13 +12,14 @@ import { useCredentialStore } from '@/stores/useCredentialStore'
 import { useAssetStore } from '@/stores/useAssetStore'
 import { useAuthStore } from '@/stores/useAuthStore'
 
-
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
 const toastStore = useToastStore()
 const walletStore = useWalletStore()
 const credentialStore = useCredentialStore()
 
+// 🔥 常量：塵埃過濾閾值
+const DUST_THRESHOLD = 0.000001
 
 // 來源過濾器（預設全選）
 const sourceFilters = ref({
@@ -29,6 +30,23 @@ const sourceFilters = ref({
   ledger_cold: true
 })
 
+// 🆕 檢查是否全選
+const isAllSelected = computed(() => {
+  return Object.values(sourceFilters.value).every(v => v === true)
+})
+
+// 🆕 全選/取消全選
+function toggleSelectAll() {
+  const newValue = !isAllSelected.value
+  Object.keys(sourceFilters.value).forEach(key => {
+    sourceFilters.value[key as keyof typeof sourceFilters.value] = newValue
+  })
+}
+
+// 🆕 切換單一來源
+function toggleSource(source: keyof typeof sourceFilters.value) {
+  sourceFilters.value[source] = !sourceFilters.value[source]
+}
 
 // 根據 Filter 過濾資產
 const filteredAssets = computed(() => {
@@ -37,12 +55,10 @@ const filteredAssets = computed(() => {
     .filter(([_, enabled]) => enabled)
     .map(([source, _]) => source as SourceType)
 
-
   // 如果全部都沒勾選，就顯示全部
   if (enabledSources.length === 0) {
     return assetStore.assetSummaries
   }
-
 
   // 過濾資產：只保留來源符合的
   return assetStore.assetSummaries.map(summary => {
@@ -54,10 +70,8 @@ const filteredAssets = computed(() => {
     // 重新計算數量
     const totalAmount = filteredSources.reduce((sum, s) => sum + s.amount, 0)
 
-
     // 如果過濾後數量為 0，就不顯示這個幣種
     if (totalAmount === 0) return null
-
 
     return {
       ...summary,
@@ -68,12 +82,10 @@ const filteredAssets = computed(() => {
   }).filter(s => s !== null) as any[]
 })
 
-
 // 過濾後的總價值
 const filteredTotalValue = computed(() => {
   return filteredAssets.value.reduce((sum, s) => sum + s.valueUSD, 0)
 })
-
 
 // 重新計算百分比
 const filteredAssetsWithPercentage = computed(() => {
@@ -83,7 +95,6 @@ const filteredAssetsWithPercentage = computed(() => {
     percentage: total > 0 ? (asset.valueUSD / total) * 100 : 0
   }))
 })
-
 
 // 格式化來源名稱
 function formatSource(source: SourceType): string {
@@ -97,15 +108,12 @@ function formatSource(source: SourceType): string {
   return nameMap[source] || source
 }
 
-
 // Modal 控制
 const showSettings = ref(false)
-
 
 // 重新整理資產
 async function handleRefresh() {
   await assetStore.refresh()
-
 
   if (assetStore.errors.length > 0) {
     toastStore.warning(`查詢完成，但有 ${assetStore.errors.length} 個錯誤`)
@@ -114,22 +122,18 @@ async function handleRefresh() {
   }
 }
 
-
 // 登出
 function handleLogout() {
   authStore.lock()
 }
-
 
 // 監聽使用者活動，重置 session 超時
 function handleUserActivity() {
   authStore.recordActivity()
 }
 
-
 // 監聽的事件類型
 const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart']
-
 
 onMounted(() => {
   // 註冊所有活動事件監聽器
@@ -137,7 +141,6 @@ onMounted(() => {
     window.addEventListener(event, handleUserActivity)
   })
 })
-
 
 onUnmounted(() => {
   // 清除所有事件監聽器
@@ -147,10 +150,8 @@ onUnmounted(() => {
 })
 </script>
 
-
 <template>
   <div class="min-h-screen bg-gray-900 text-white">
-
 
     <!-- Header -->
     <header class="border-b border-gray-800 bg-gray-900/95 backdrop-blur-sm sticky top-0 z-50">
@@ -166,19 +167,16 @@ onUnmounted(() => {
             </h1>
           </div>
 
-
           <div class="flex items-center space-x-4">
             <button @click="handleRefresh" :disabled="assetStore.isLoading"
               class="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-700 rounded-lg font-semibold transition flex items-center space-x-2">
               <span>{{ assetStore.isLoading ? '⟳ 更新中...' : '🔄 Refresh' }}</span>
             </button>
 
-
             <button @click="showSettings = true"
               class="px-4 py-2 bg-gray-800 hover:bg-gray-700 rounded-lg font-semibold transition">
               ⚙️ Settings
             </button>
-
 
             <button @click="handleLogout"
               class="px-4 py-2 bg-red-600 hover:bg-red-700 rounded-lg font-semibold transition">
@@ -189,51 +187,87 @@ onUnmounted(() => {
       </div>
     </header>
 
-
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-
-      <!-- Filter Bar -->
+      <!-- 🔥 Filter Bar - 新版 Button 風格 -->
       <div class="bg-gray-800 rounded-xl p-4 border border-gray-700">
-        <h3 class="text-sm font-semibold text-gray-400 mb-3">資料來源</h3>
+        <h3 class="text-sm font-semibold text-gray-400 mb-3">資料來源篩選</h3>
         <div class="flex flex-wrap gap-3">
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" v-model="sourceFilters.binance_cex"
-              class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
-            <span class="text-sm">Binance CEX</span>
-          </label>
 
+          <!-- 全選按鈕 -->
+          <button @click="toggleSelectAll" :class="[
+            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            isAllSelected
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700'
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          ]">
+            <span class="mr-2">{{ isAllSelected ? '✓' : '○' }}</span>
+            全選
+          </button>
 
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" v-model="sourceFilters.okx_cex"
-              class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
-            <span class="text-sm">OKX CEX</span>
-          </label>
+          <!-- 分隔線 -->
+          <div class="w-px bg-gray-700 self-stretch"></div>
 
+          <!-- Binance CEX -->
+          <button @click="toggleSource('binance_cex')" :class="[
+            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            sourceFilters.binance_cex
+              ? 'bg-yellow-600 text-white shadow-lg shadow-yellow-600/30 hover:bg-yellow-700'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          ]">
+            <span class="mr-2">{{ sourceFilters.binance_cex ? '✓' : '○' }}</span>
+            Binance CEX
+          </button>
 
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" v-model="sourceFilters.binance_hot"
-              class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
-            <span class="text-sm">Binance Hot</span>
-          </label>
+          <!-- OKX CEX -->
+          <button @click="toggleSource('okx_cex')" :class="[
+            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            sourceFilters.okx_cex
+              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30 hover:bg-blue-700'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          ]">
+            <span class="mr-2">{{ sourceFilters.okx_cex ? '✓' : '○' }}</span>
+            OKX CEX
+          </button>
 
+          <!-- Binance Hot -->
+          <button @click="toggleSource('binance_hot')" :class="[
+            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            sourceFilters.binance_hot
+              ? 'bg-orange-600 text-white shadow-lg shadow-orange-600/30 hover:bg-orange-700'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          ]">
+            <span class="mr-2">{{ sourceFilters.binance_hot ? '✓' : '○' }}</span>
+            Binance Hot
+          </button>
 
-          <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" v-model="sourceFilters.okx_hot"
-              class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
-            <span class="text-sm">OKX Hot</span>
-          </label>
+          <!-- OKX Hot -->
+          <button @click="toggleSource('okx_hot')" :class="[
+            'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+            sourceFilters.okx_hot
+              ? 'bg-cyan-600 text-white shadow-lg shadow-cyan-600/30 hover:bg-cyan-700'
+              : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+          ]">
+            <span class="mr-2">{{ sourceFilters.okx_hot ? '✓' : '○' }}</span>
+            OKX Hot
+          </button>
 
+          <!-- Ledger Cold (暫時註解，未來可啟用) -->
+          <!-- <button 
+            @click="toggleSource('ledger_cold')"
+            :class="[
+              'px-4 py-2 rounded-lg font-semibold text-sm transition-all duration-200',
+              sourceFilters.ledger_cold
+                ? 'bg-purple-600 text-white shadow-lg shadow-purple-600/30 hover:bg-purple-700' 
+                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+            ]">
+            <span class="mr-2">{{ sourceFilters.ledger_cold ? '✓' : '○' }}</span>
+            Ledger Cold
+          </button> -->
 
-          <!-- <label class="flex items-center space-x-2 cursor-pointer">
-            <input type="checkbox" v-model="sourceFilters.ledger_cold"
-              class="w-4 h-4 rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500 focus:ring-offset-gray-900">
-            <span class="text-sm">Ledger Cold</span>
-          </label> -->
         </div>
       </div>
-
 
       <!-- Total Balance Card -->
       <div class="bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl p-8 shadow-2xl">
@@ -246,7 +280,6 @@ onUnmounted(() => {
         </p>
       </div>
 
-
       <!-- 空狀態提示 -->
       <div
         v-if="!assetStore.lastUpdated && credentialStore.credentials.length === 0 && walletStore.addresses.length === 0"
@@ -258,7 +291,6 @@ onUnmounted(() => {
             <p class="text-gray-400">開始統一管理您的加密資產</p>
           </div>
 
-
           <div class="space-y-4 text-left">
             <div class="flex items-start space-x-3">
               <span class="text-2xl">1️⃣</span>
@@ -268,7 +300,6 @@ onUnmounted(() => {
               </div>
             </div>
 
-
             <div class="flex items-start space-x-3">
               <span class="text-2xl">2️⃣</span>
               <div>
@@ -276,7 +307,6 @@ onUnmounted(() => {
                 <p class="text-sm text-gray-400">點擊 Refresh 按鈕，系統會自動查詢並彙整您的資產</p>
               </div>
             </div>
-
 
             <div class="flex items-start space-x-3">
               <span class="text-2xl">3️⃣</span>
@@ -287,12 +317,10 @@ onUnmounted(() => {
             </div>
           </div>
 
-
           <button @click="showSettings = true"
             class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition shadow-lg">
             開始設定 →
           </button>
-
 
           <div class="bg-gray-900/50 border border-gray-700 rounded-lg p-4">
             <div class="flex items-start space-x-3">
@@ -308,17 +336,14 @@ onUnmounted(() => {
         </div>
       </div>
 
-
       <!-- Assets Grid -->
       <div class="grid lg:grid-cols-2 gap-6">
-
 
         <!-- Asset Allocation -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
           <h3 class="text-lg font-bold mb-4">資產配置</h3>
           <AssetChart :assets="filteredAssetsWithPercentage" />
         </div>
-
 
         <!-- 來源分布 -->
         <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
@@ -342,7 +367,7 @@ onUnmounted(() => {
 
               <!-- 來源列表 -->
               <div class="space-y-1">
-                <div v-for="source in summary.sources.filter(s => s.amount > 0.000001)" :key="source.source"
+                <div v-for="source in summary.sources.filter(s => s.amount > DUST_THRESHOLD)" :key="source.source"
                   class="flex justify-between items-center text-xs pl-8">
                   <span class="text-gray-400">{{ formatSource(source.source) }}</span>
                   <span class="text-gray-300 font-mono">{{ source.amount.toFixed(6) }}</span>
@@ -363,9 +388,7 @@ onUnmounted(() => {
           </div>
         </div>
 
-
       </div>
-
 
       <!-- Full Asset Table -->
       <div class="bg-gray-800 rounded-xl overflow-hidden border border-gray-700">
@@ -414,23 +437,18 @@ onUnmounted(() => {
         </div>
       </div>
 
-
     </main>
-
 
     <!-- Settings Modal -->
     <SettingsModal :show="showSettings" @close="showSettings = false" />
 
-
     <!-- Toast -->
     <Toast :messages="toastStore.messages" @remove="toastStore.remove" />
-
 
     <!-- Loading Overlay -->
     <LoadingOverlay :show="assetStore.isLoading" message="查詢資產中..." />
   </div>
 </template>
-
 
 <style scoped>
 /* 自定義滾動條樣式 */
@@ -450,5 +468,14 @@ onUnmounted(() => {
 
 .scrollbar-thin::-webkit-scrollbar-thumb:hover {
   background: #4b5563;
+}
+
+/* Button 動畫效果 */
+button {
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+button:active {
+  transform: scale(0.95);
 }
 </style>

@@ -9,8 +9,9 @@ export type SourceType =
 // 交易所名稱（僅用於 CEX API）
 export type ExchangeName = 'binance' | 'okx'
 
-// 支援的幣種
-export type CryptoSymbol = 'BTC' | 'ETH' | 'ADA' | 'USDT' | 'USDC'
+// 🔥 改為動態：移除固定的 CryptoSymbol type
+// export type CryptoSymbol = 'BTC' | 'ETH' | 'ADA' | 'USDT' | 'USDC'
+export type CryptoSymbol = string  // ← 改為動態支援所有幣種
 
 // 單一資產資料結構
 export interface Asset {
@@ -34,4 +35,12 @@ export interface PriceData {
   symbol: CryptoSymbol
   priceUSD: number
   timestamp: number
+}
+
+// 🆕 幣種資訊（含圖示）
+export interface CoinInfo {
+  symbol: CryptoSymbol
+  name?: string
+  imageUrl?: string
+  isSupported: boolean  // 是否有價格資料
 }
