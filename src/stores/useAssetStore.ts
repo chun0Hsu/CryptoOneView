@@ -2,10 +2,11 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useCredentialStore } from './useCredentialStore'
 import { useWalletStore } from './useWalletStore'
-import { fetchExchangeBalance, fetchExchangeEarn } from '@/services/exchangeService'
+import { fetchAllExchangeBalances } from '@/services/exchangeService'
 import { fetchChainBalance } from '@/services/chainService'
 import { fetchPrices, DUST_THRESHOLD_USD } from '@/services/priceService'
 import type { Asset, CryptoSymbol, PriceData, SourceType } from '@/types'
+import { getExchangeConfig } from '@/config/exchanges'
 
 // 資產彙總資料
 export interface AssetSummary {
@@ -16,6 +17,7 @@ export interface AssetSummary {
   percentage: number
   sources: Array<{
     source: SourceType
+    accountType?: string
     amount: number
   }>
 }
@@ -54,13 +56,16 @@ export const useAssetStore = defineStore('asset', () => {
 
       summary.totalAmount += asset.amount
 
-      // 記錄來源
-      const existingSource = summary.sources.find(s => s.source === asset.source)
+      // 記錄來源（含 accountType）
+      const existingSource = summary.sources.find(
+        s => s.source === asset.source && s.accountType === asset.accountType
+      )
       if (existingSource) {
         existingSource.amount += asset.amount
       } else {
         summary.sources.push({
           source: asset.source,
+          accountType: asset.accountType,
           amount: asset.amount
         })
       }
@@ -73,7 +78,7 @@ export const useAssetStore = defineStore('asset', () => {
     for (const summary of summaryMap.values()) {
       summary.valueUSD = summary.totalAmount * summary.priceUSD
 
-      // 🔥 過濾塵埃資產：總價值低於 1 USD 的不顯示
+      // 過濾塵埃資產：總價值低於 1 USD 的不顯示
       if (summary.valueUSD >= DUST_THRESHOLD_USD || summary.priceUSD === 0) {
         summaries.push(summary)
         totalValueUSD += summary.valueUSD
@@ -94,7 +99,7 @@ export const useAssetStore = defineStore('asset', () => {
     return assetSummaries.value.reduce((sum, s) => sum + s.valueUSD, 0)
   })
 
-  // 🔥 重新整理所有資料（重構版）
+  // 重新整理所有資料
   async function refresh() {
     isLoading.value = true
     errors.value = []
@@ -103,56 +108,35 @@ export const useAssetStore = defineStore('asset', () => {
 
     try {
       // ==========================================
-      // 1️⃣ 查詢交易所餘額（現貨 + Earn）
+      // 1. 查詢交易所餘額（所有子帳戶並行）
       // ==========================================
       for (const cred of credentialStore.credentials) {
         try {
           const decrypted = credentialStore.getCredential(cred.exchange)
           if (!decrypted) continue
 
-          // 1.1 查詢現貨帳戶
-          const spotResult = await fetchExchangeBalance(
+          const config = getExchangeConfig(cred.exchange)
+          const sourceType = config?.sourceType || `${cred.exchange}_cex`
+
+          const result = await fetchAllExchangeBalances(
             cred.exchange,
             decrypted.apiKey,
             decrypted.secret,
             decrypted.passphrase
           )
 
-          if (spotResult.success) {
-            for (const balance of spotResult.balances) {
-              newAssets.push({
-                symbol: balance.symbol,
-                amount: balance.total,
-                source: `${cred.exchange}_cex` as SourceType
-              })
-              allSymbols.add(balance.symbol)
-            }
-          } else {
-            errors.value.push(`${cred.exchange} 現貨查詢失敗: ${spotResult.error}`)
+          for (const balance of result.balances) {
+            newAssets.push({
+              symbol: balance.symbol,
+              amount: balance.amount,
+              source: sourceType,
+              accountType: balance.accountType,
+            })
+            allSymbols.add(balance.symbol)
           }
 
-          // 1.2 查詢 Earn 帳戶
-          try {
-            const earnResult = await fetchExchangeEarn(
-              cred.exchange,
-              decrypted.apiKey,
-              decrypted.secret,
-              decrypted.passphrase
-            )
-
-            if (earnResult.success) {
-              for (const balance of earnResult.balances) {
-                newAssets.push({
-                  symbol: balance.symbol,
-                  amount: balance.amount,
-                  source: `${cred.exchange}_cex` as SourceType
-                })
-                allSymbols.add(balance.symbol)
-              }
-            }
-          } catch (e) {
-            console.log(`${cred.exchange} Earn 查詢略過`)
-          }
+          // 收集非致命錯誤
+          errors.value.push(...result.errors)
 
         } catch (e: any) {
           errors.value.push(`${cred.exchange} 錯誤: ${e.message}`)
@@ -160,7 +144,7 @@ export const useAssetStore = defineStore('asset', () => {
       }
 
       // ==========================================
-      // 2️⃣ 查詢鏈上錢包餘額
+      // 2. 查詢鏈上錢包餘額
       // ==========================================
       for (const addr of walletStore.addresses) {
         try {
@@ -172,7 +156,7 @@ export const useAssetStore = defineStore('asset', () => {
               newAssets.push({
                 symbol: balance.symbol,
                 amount: balance.amount,
-                source: addr.source as SourceType
+                source: addr.source,
               })
               allSymbols.add(balance.symbol)
             }
@@ -190,7 +174,7 @@ export const useAssetStore = defineStore('asset', () => {
       }
 
       // ==========================================
-      // 3️⃣ 動態查詢價格
+      // 3. 動態查詢價格
       // ==========================================
       if (allSymbols.size > 0) {
         const symbolList = Array.from(allSymbols)
@@ -200,7 +184,7 @@ export const useAssetStore = defineStore('asset', () => {
         // 記錄找不到價格的幣種
         for (const symbol of symbolList) {
           if (!priceData.has(symbol)) {
-            console.warn(`⚠️ 找不到 ${symbol} 的價格，該幣種將不計入總資產`)
+            console.warn(`找不到 ${symbol} 的價格，該幣種將不計入總資產`)
           }
         }
       }

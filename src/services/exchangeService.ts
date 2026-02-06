@@ -1,266 +1,138 @@
-import type { ExchangeName, CryptoSymbol } from '@/types'
+import { getExchangeConfig } from '@/config/exchanges'
 
-// 單一幣種餘額
-export interface ExchangeBalance {
-  symbol: CryptoSymbol
-  free: number
-  used: number
-  total: number
+export interface AccountBalance {
+  symbol: string
+  amount: number
+  accountType: string
 }
 
-// 查詢結果
-export interface ExchangeBalanceResult {
-  success: boolean
-  balances: ExchangeBalance[]
-  error?: string
+export interface ExchangeFetchResult {
+  balances: AccountBalance[]
+  errors: string[]
 }
 
 /**
- * 取得 API 端點 URL
+ * 查詢一個交易所的所有子帳戶餘額（並行）
  */
-function getFunctionUrl(functionName: string): string {
-  // Vercel 部署：使用 /api/ 路徑
-  // 本地開發：Vercel CLI 會自動處理
-  return `/api/${functionName}`
-}
-
-/**
- * 查詢 Binance 餘額
- */
-async function fetchBinanceBalance(
-  apiKey: string,
-  secret: string
-): Promise<ExchangeBalanceResult> {
-  try {
-    const url = getFunctionUrl('binance-balance')
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ apiKey, secret })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    return {
-      success: true,
-      balances: data.balances
-    }
-  } catch (error: any) {
-    console.error('Binance API error:', error)
-    return {
-      success: false,
-      balances: [],
-      error: error.message || 'Binance 查詢失敗'
-    }
-  }
-}
-
-/**
- * 查詢 OKX 餘額
- */
-async function fetchOKXBalance(
+export async function fetchAllExchangeBalances(
+  exchangeId: string,
   apiKey: string,
   secret: string,
   passphrase?: string
-): Promise<ExchangeBalanceResult> {
-  try {
-    if (!passphrase) {
-      throw new Error('OKX API 需要 Passphrase')
-    }
-
-    const url = getFunctionUrl('okx-balance')
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ apiKey, secret, passphrase })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    return {
-      success: true,
-      balances: data.balances
-    }
-  } catch (error: any) {
-    console.error('OKX API error:', error)
-    return {
-      success: false,
-      balances: [],
-      error: error.message || 'OKX 查詢失敗'
-    }
+): Promise<ExchangeFetchResult> {
+  const config = getExchangeConfig(exchangeId)
+  if (!config) {
+    return { balances: [], errors: [`不支援的交易所: ${exchangeId}`] }
   }
-}
 
-/**
- * 查詢交易所餘額（統一介面）
- */
-export async function fetchExchangeBalance(
-  exchange: ExchangeName,
-  apiKey: string,
-  secret: string,
-  passphrase?: string
-): Promise<ExchangeBalanceResult> {
-  switch (exchange) {
-    case 'binance':
-      return fetchBinanceBalance(apiKey, secret)
-    case 'okx':
-      return fetchOKXBalance(apiKey, secret, passphrase)
-    default:
-      return {
-        success: false,
-        balances: [],
-        error: '不支援的交易所'
+  if (config.requiresPassphrase && !passphrase) {
+    return { balances: [], errors: [`${config.name} API 需要 Passphrase`] }
+  }
+
+  const apiUrl = `/api/${exchangeId}`
+
+  // 並行查詢所有子帳戶
+  const results = await Promise.allSettled(
+    config.accountTypes.map(async (accountType) => {
+      const body: Record<string, string> = {
+        apiKey,
+        secret,
+        type: accountType.apiAction,
       }
-  }
+      if (passphrase) {
+        body.passphrase = passphrase
+      }
+
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}))
+        throw new Error(errorData.error || `HTTP ${response.status}`)
+      }
+
+      const data = await response.json()
+
+      if (data.error) {
+        throw new Error(data.error)
+      }
+
+      const balances: AccountBalance[] = (data.balances || []).map(
+        (b: { symbol: string; amount: number }) => ({
+          symbol: b.symbol,
+          amount: b.amount,
+          accountType: accountType.id,
+        })
+      )
+
+      return balances
+    })
+  )
+
+  const allBalances: AccountBalance[] = []
+  const errors: string[] = []
+
+  results.forEach((result, index) => {
+    if (result.status === 'fulfilled') {
+      allBalances.push(...result.value)
+    } else {
+      const accountType = config.accountTypes[index]
+      errors.push(`${config.name} ${accountType.label}: ${result.reason?.message || '查詢失敗'}`)
+    }
+  })
+
+  return { balances: allBalances, errors }
 }
 
 /**
- * 驗證 API Key（簡單驗證：嘗試查詢餘額）
+ * 驗證 API Key（嘗試查詢 spot 帳戶）
  */
 export async function validateAPIKey(
-  exchange: ExchangeName,
+  exchange: string,
   apiKey: string,
   secret: string,
   passphrase?: string
 ): Promise<{ valid: boolean; error?: string }> {
-  const result = await fetchExchangeBalance(exchange, apiKey, secret, passphrase)
+  const config = getExchangeConfig(exchange)
+  if (!config) {
+    return { valid: false, error: `不支援的交易所: ${exchange}` }
+  }
 
-  if (result.success) {
+  if (config.requiresPassphrase && !passphrase) {
+    return { valid: false, error: `${config.name} API 需要 Passphrase` }
+  }
+
+  const body: Record<string, string> = {
+    apiKey,
+    secret,
+    type: config.accountTypes[0].apiAction,
+  }
+  if (passphrase) {
+    body.passphrase = passphrase
+  }
+
+  try {
+    const response = await fetch(`/api/${exchange}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}))
+      return { valid: false, error: errorData.error || `HTTP ${response.status}` }
+    }
+
+    const data = await response.json()
+    if (data.error) {
+      return { valid: false, error: data.error }
+    }
+
     return { valid: true }
-  }
-
-  return { valid: false, error: result.error }
-}
-
-/**
- * Earn 餘額結果
- */
-export interface EarnBalanceResult {
-  success: boolean
-  balances: Array<{
-    symbol: CryptoSymbol
-    amount: number
-    type: string
-  }>
-  error?: string
-}
-
-/**
- * 查詢 Binance Earn 餘額
- */
-async function fetchBinanceEarn(
-  apiKey: string,
-  secret: string
-): Promise<EarnBalanceResult> {
-  try {
-    const url = getFunctionUrl('binance-earn')
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ apiKey, secret })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    return {
-      success: true,
-      balances: data.balances
-    }
   } catch (error: any) {
-    return {
-      success: false,
-      balances: [],
-      error: error.message
-    }
+    return { valid: false, error: error.message || '驗證失敗' }
   }
 }
-
-/**
- * 查詢 OKX Earn 餘額
- */
-async function fetchOKXEarn(
-  apiKey: string,
-  secret: string,
-  passphrase: string
-): Promise<EarnBalanceResult> {
-  try {
-    const url = getFunctionUrl('okx-earn')
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ apiKey, secret, passphrase })
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json()
-      throw new Error(errorData.error || `HTTP ${response.status}`)
-    }
-
-    const data = await response.json()
-
-    return {
-      success: true,
-      balances: data.balances
-    }
-  } catch (error: any) {
-    return {
-      success: false,
-      balances: [],
-      error: error.message
-    }
-  }
-}
-
-/**
- * 查詢交易所 Earn 餘額（統一介面）
- */
-export async function fetchExchangeEarn(
-  exchange: ExchangeName,
-  apiKey: string,
-  secret: string,
-  passphrase?: string
-): Promise<EarnBalanceResult> {
-  switch (exchange) {
-    case 'binance':
-      return fetchBinanceEarn(apiKey, secret)
-    case 'okx':
-      if (!passphrase) {
-        return { success: false, balances: [], error: 'Missing passphrase' }
-      }
-      return fetchOKXEarn(apiKey, secret, passphrase)
-    default:
-      return {
-        success: false,
-        balances: [],
-        error: '不支援的交易所'
-      }
-  }
-}
-

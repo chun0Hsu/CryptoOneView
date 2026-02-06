@@ -2,15 +2,17 @@ import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import { useAuthStore } from './useAuthStore'
 import CryptoJS from 'crypto-js'
+import { getWalletSources } from '@/config/sources'
+import { CHAIN_REGISTRY } from '@/config/chains'
 
 // 錢包地址資料結構
 export interface WalletAddress {
   id: string
-  source: 'binance_hot' | 'okx_hot' | 'ledger_cold'
-  chain: 'BTC' | 'ETH' | 'ADA'
+  source: string
+  chain: string
   address: string
   label?: string
-  encryptedApiKey?: string  
+  encryptedApiKey?: string
   createdAt: number
 }
 
@@ -20,22 +22,22 @@ export const useWalletStore = defineStore('wallet', () => {
   // 狀態：所有錢包地址
   const addresses = ref<WalletAddress[]>([])
 
-  // Getter：依來源分類
+  // Getter：依來源分類（動態）
   const addressesBySource = computed(() => {
-    return {
-      binance_hot: addresses.value.filter(a => a.source === 'binance_hot'),
-      okx_hot: addresses.value.filter(a => a.source === 'okx_hot'),
-      ledger_cold: addresses.value.filter(a => a.source === 'ledger_cold')
+    const result: Record<string, WalletAddress[]> = {}
+    for (const source of getWalletSources()) {
+      result[source.id] = addresses.value.filter(a => a.source === source.id)
     }
+    return result
   })
 
-  // Getter：依鏈分類
+  // Getter：依鏈分類（動態）
   const addressesByChain = computed(() => {
-    return {
-      BTC: addresses.value.filter(a => a.chain === 'BTC'),
-      ETH: addresses.value.filter(a => a.chain === 'ETH'),
-      ADA: addresses.value.filter(a => a.chain === 'ADA')
+    const result: Record<string, WalletAddress[]> = {}
+    for (const chain of CHAIN_REGISTRY) {
+      result[chain.id] = addresses.value.filter(a => a.chain === chain.id)
     }
+    return result
   })
 
   // 初始化：從 localStorage 讀取
@@ -58,8 +60,8 @@ export const useWalletStore = defineStore('wallet', () => {
 
   // 新增錢包地址
   function addAddress(
-    source: 'binance_hot' | 'okx_hot' | 'ledger_cold',
-    chain: 'BTC' | 'ETH' | 'ADA',
+    source: string,
+    chain: string,
     address: string,
     label?: string,
     apiKey?: string
@@ -92,7 +94,7 @@ export const useWalletStore = defineStore('wallet', () => {
       chain,
       address,
       label,
-      encryptedApiKey,  // ← 存加密後的
+      encryptedApiKey,
       createdAt: Date.now()
     })
 
@@ -150,7 +152,7 @@ export const useWalletStore = defineStore('wallet', () => {
     addressesByChain,
     init,
     addAddress,
-    getApiKey,  
+    getApiKey,
     updateLabel,
     removeAddress,
     clearAll

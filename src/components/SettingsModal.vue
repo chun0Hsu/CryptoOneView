@@ -1,8 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useCredentialStore } from '@/stores/useCredentialStore'
 import { useWalletStore } from '@/stores/useWalletStore'
-import type { ExchangeName } from '@/types'
+import { EXCHANGE_REGISTRY, getExchangeConfig } from '@/config/exchanges'
+import { getWalletSources, getSourceConfig } from '@/config/sources'
+import { CHAIN_REGISTRY, getChainConfig } from '@/config/chains'
 
 const credentialStore = useCredentialStore()
 const walletStore = useWalletStore()
@@ -20,19 +22,32 @@ const activeTab = ref<'exchange' | 'wallet'>('exchange')
 
 // 交易所 API Key 表單
 const exchangeForm = ref({
-  exchange: 'binance' as ExchangeName,
+  exchange: EXCHANGE_REGISTRY[0]?.id || 'binance',
   apiKey: '',
   secret: '',
   passphrase: ''
 })
 
+// 選中的交易所 config
+const selectedExchangeConfig = computed(() => {
+  return getExchangeConfig(exchangeForm.value.exchange)
+})
+
+// 錢包來源列表
+const walletSources = computed(() => getWalletSources())
+
 // 錢包地址表單
 const walletForm = ref({
-  source: 'binance_hot' as 'binance_hot' | 'okx_hot' | 'ledger_cold',
-  chain: 'BTC' as 'BTC' | 'ETH' | 'ADA',
+  source: walletSources.value[0]?.id || 'binance_hot',
+  chain: CHAIN_REGISTRY[0]?.id || 'BTC',
   address: '',
   label: '',
   apiKey: ''
+})
+
+// 選中的鏈 config
+const selectedChainConfig = computed(() => {
+  return getChainConfig(walletForm.value.chain)
 })
 
 const message = ref('')
@@ -44,9 +59,9 @@ function handleAddExchange() {
     return
   }
 
-  // OKX 需要 Passphrase
-  if (exchangeForm.value.exchange === 'okx' && !exchangeForm.value.passphrase) {
-    message.value = '⚠️ OKX 需要 Passphrase'
+  // 需要 Passphrase 的交易所
+  if (selectedExchangeConfig.value?.requiresPassphrase && !exchangeForm.value.passphrase) {
+    message.value = `⚠️ ${selectedExchangeConfig.value.name} 需要 Passphrase`
     return
   }
 
@@ -57,7 +72,8 @@ function handleAddExchange() {
       exchangeForm.value.secret,
       exchangeForm.value.passphrase || undefined
     )
-    message.value = `✅ ${exchangeForm.value.exchange.toUpperCase()} 憑證已儲存`
+    const name = selectedExchangeConfig.value?.name || exchangeForm.value.exchange.toUpperCase()
+    message.value = `✅ ${name} 憑證已儲存`
     exchangeForm.value.apiKey = ''
     exchangeForm.value.secret = ''
     exchangeForm.value.passphrase = ''
@@ -67,11 +83,24 @@ function handleAddExchange() {
 }
 
 // 刪除交易所憑證
-function handleRemoveExchange(exchange: ExchangeName) {
-  if (confirm(`確定要刪除 ${exchange.toUpperCase()} 的憑證嗎？`)) {
+function handleRemoveExchange(exchange: string) {
+  const name = getExchangeConfig(exchange)?.name || exchange.toUpperCase()
+  if (confirm(`確定要刪除 ${name} 的憑證嗎？`)) {
     credentialStore.removeCredential(exchange)
-    message.value = `🗑️ ${exchange.toUpperCase()} 憑證已刪除`
+    message.value = `🗑️ ${name} 憑證已刪除`
   }
+}
+
+// 取得交易所顯示名稱
+function getExchangeDisplayName(exchangeId: string): string {
+  return getExchangeConfig(exchangeId)?.name || exchangeId.toUpperCase()
+}
+
+// 取得交易所圖示
+function getExchangeIcon(exchangeId: string): string {
+  const config = getExchangeConfig(exchangeId)
+  if (!config) return '🔵'
+  return config.color === 'amber' ? '🟡' : '🔵'
 }
 
 // 新增錢包地址
@@ -123,7 +152,7 @@ function handleClose() {
       <div
         class="relative bg-slate-800/90 backdrop-blur-xl rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden border border-slate-700/50">
 
-        <!-- 🔥 背景裝飾 -->
+        <!-- 背景裝飾 -->
         <div
           class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 rounded-full blur-3xl pointer-events-none">
         </div>
@@ -187,8 +216,7 @@ function handleClose() {
                   <label class="block text-sm font-semibold text-slate-300 mb-2">選擇交易所</label>
                   <select v-model="exchangeForm.exchange"
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition">
-                    <option value="binance">Binance</option>
-                    <option value="okx">OKX</option>
+                    <option v-for="ex in EXCHANGE_REGISTRY" :key="ex.id" :value="ex.id">{{ ex.name }}</option>
                   </select>
                 </div>
 
@@ -204,11 +232,11 @@ function handleClose() {
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
                 </div>
 
-                <div v-if="exchangeForm.exchange === 'okx'">
+                <div v-if="selectedExchangeConfig?.requiresPassphrase">
                   <label class="block text-sm font-semibold text-slate-300 mb-2">Passphrase</label>
                   <input v-model="exchangeForm.passphrase" type="password" placeholder="請輸入 Passphrase"
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
-                  <p class="text-xs text-slate-500 mt-2">💡 OKX API 需要 Passphrase（在 OKX 建立 API Key 時設定）</p>
+                  <p class="text-xs text-slate-500 mt-2">💡 {{ selectedExchangeConfig.name }} API 需要 Passphrase（在 {{ selectedExchangeConfig.name }} 建立 API Key 時設定）</p>
                 </div>
 
                 <button @click="handleAddExchange"
@@ -229,10 +257,10 @@ function handleClose() {
                 <div class="flex items-center space-x-3">
                   <div
                     class="w-10 h-10 rounded-lg bg-slate-700 flex items-center justify-center font-bold text-sm border border-slate-600/50">
-                    {{ cred.exchange === 'binance' ? '🟡' : '🔵' }}
+                    {{ getExchangeIcon(cred.exchange) }}
                   </div>
                   <div>
-                    <p class="font-semibold text-slate-200">{{ cred.exchange.toUpperCase() }}</p>
+                    <p class="font-semibold text-slate-200">{{ getExchangeDisplayName(cred.exchange) }}</p>
                     <p class="text-xs text-slate-500">ID: {{ cred.id.slice(0, 8) }}...</p>
                   </div>
                 </div>
@@ -259,9 +287,7 @@ function handleClose() {
                   <label class="block text-sm font-semibold text-slate-300 mb-2">來源</label>
                   <select v-model="walletForm.source"
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition">
-                    <option value="binance_hot">Binance Hot</option>
-                    <option value="okx_hot">OKX Hot</option>
-                    <!-- <option value="ledger_cold">Ledger Cold</option> V2.0 -->
+                    <option v-for="src in walletSources" :key="src.id" :value="src.id">{{ src.label }}</option>
                   </select>
                 </div>
 
@@ -269,9 +295,7 @@ function handleClose() {
                   <label class="block text-sm font-semibold text-slate-300 mb-2">鏈</label>
                   <select v-model="walletForm.chain"
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition">
-                    <option value="BTC">Bitcoin (BTC)</option>
-                    <option value="ETH">Ethereum (ETH)</option>
-                    <!-- <option value="ADA">Cardano (ADA)</option> V2.0 -->
+                    <option v-for="chain in CHAIN_REGISTRY" :key="chain.id" :value="chain.id">{{ chain.name }} ({{ chain.symbol }})</option>
                   </select>
                 </div>
 
@@ -281,17 +305,17 @@ function handleClose() {
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
                 </div>
 
-                <div v-if="walletForm.chain === 'ETH'">
+                <div v-if="selectedChainConfig?.apiKeyLabel">
                   <label class="block text-sm font-semibold text-slate-300 mb-2">
-                    Etherscan API Key（選填，建議填寫）
+                    {{ selectedChainConfig.apiKeyLabel }}（選填，建議填寫）
                   </label>
-                  <input v-model="walletForm.apiKey" type="text" placeholder="選填：您的 Etherscan API Key"
+                  <input v-model="walletForm.apiKey" type="text" :placeholder="`選填：您的 ${selectedChainConfig.apiKeyLabel}`"
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
-                  <p class="text-xs text-slate-500 mt-2">
+                  <p v-if="selectedChainConfig.apiKeyUrl" class="text-xs text-slate-500 mt-2">
                     💡 免費申請：
-                    <a href="https://etherscan.io/myapikey" target="_blank"
+                    <a :href="selectedChainConfig.apiKeyUrl" target="_blank"
                       class="text-cyan-400 hover:text-cyan-300 underline">
-                      https://etherscan.io/myapikey
+                      {{ selectedChainConfig.apiKeyUrl }}
                     </a>
                     （避免查詢限制）
                   </p>
@@ -322,7 +346,7 @@ function handleClose() {
                   <div class="space-x-2">
                     <span
                       class="inline-block px-2 py-1 bg-indigo-600/20 text-indigo-300 rounded text-xs font-semibold border border-indigo-500/20">
-                      {{ addr.source.replace('_', ' ').toUpperCase() }}
+                      {{ getSourceConfig(addr.source)?.label || addr.source.replace('_', ' ').toUpperCase() }}
                     </span>
                     <span
                       class="inline-block px-2 py-1 bg-violet-600/20 text-violet-300 rounded text-xs font-semibold border border-violet-500/20">

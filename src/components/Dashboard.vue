@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue'
-import type { SourceType } from '@/types'
 import SettingsModal from './SettingsModal.vue'
 import AssetChart from './AssetChart.vue'
 import CoinIcon from './CoinIcon.vue'
@@ -11,6 +10,8 @@ import { useWalletStore } from '@/stores/useWalletStore'
 import { useCredentialStore } from '@/stores/useCredentialStore'
 import { useAssetStore } from '@/stores/useAssetStore'
 import { useAuthStore } from '@/stores/useAuthStore'
+import { SOURCE_REGISTRY, getSourceConfig } from '@/config/sources'
+import { getExchangeConfig } from '@/config/exchanges'
 
 const assetStore = useAssetStore()
 const authStore = useAuthStore()
@@ -20,14 +21,10 @@ const credentialStore = useCredentialStore()
 
 const DUST_THRESHOLD = 0.000001
 
-// 來源過濾器（預設全選）
-const sourceFilters = ref({
-  binance_cex: true,
-  okx_cex: true,
-  binance_hot: true,
-  okx_hot: true,
-  ledger_cold: true
-})
+// 來源過濾器（從 registry 動態生成）
+const sourceFilters = ref<Record<string, boolean>>(
+  Object.fromEntries(SOURCE_REGISTRY.map(s => [s.id, true]))
+)
 
 // 檢查是否全選
 const isAllSelected = computed(() => {
@@ -38,20 +35,20 @@ const isAllSelected = computed(() => {
 function toggleSelectAll() {
   const newValue = !isAllSelected.value
   Object.keys(sourceFilters.value).forEach(key => {
-    sourceFilters.value[key as keyof typeof sourceFilters.value] = newValue
+    sourceFilters.value[key] = newValue
   })
 }
 
 // 切換單一來源
-function toggleSource(source: keyof typeof sourceFilters.value) {
-  sourceFilters.value[source] = !sourceFilters.value[source]
+function toggleSource(sourceId: string) {
+  sourceFilters.value[sourceId] = !sourceFilters.value[sourceId]
 }
 
 // 根據 Filter 過濾資產
 const filteredAssets = computed(() => {
   const enabledSources = Object.entries(sourceFilters.value)
     .filter(([_, enabled]) => enabled)
-    .map(([source, _]) => source as SourceType)
+    .map(([source]) => source)
 
   if (enabledSources.length === 0) {
     return assetStore.assetSummaries
@@ -90,15 +87,22 @@ const filteredAssetsWithPercentage = computed(() => {
 })
 
 // 格式化來源名稱
-function formatSource(source: SourceType): string {
-  const nameMap: Record<SourceType, string> = {
-    binance_cex: 'Binance CEX',
-    okx_cex: 'OKX CEX',
-    binance_hot: 'Binance Hot',
-    okx_hot: 'OKX Hot',
-    ledger_cold: 'Ledger Cold'
+function formatSource(source: string): string {
+  return getSourceConfig(source)?.label || source
+}
+
+// 格式化 accountType 標籤
+function formatAccountType(source: string, accountType?: string): string {
+  if (!accountType) return ''
+  // 從 source 推出 exchange id
+  const sourceConfig = getSourceConfig(source)
+  if (sourceConfig?.type === 'cex') {
+    const exchangeId = source.replace('_cex', '')
+    const exchangeConfig = getExchangeConfig(exchangeId)
+    const accountConfig = exchangeConfig?.accountTypes.find(a => a.id === accountType)
+    if (accountConfig) return accountConfig.label
   }
-  return nameMap[source] || source
+  return accountType
 }
 
 // Modal 控制
@@ -159,10 +163,9 @@ onUnmounted(() => {
           </div>
 
           <div class="flex items-center space-x-3">
-            <!-- 🔥 Refresh 按鈕 - 深灰 + 青色 accent -->
+            <!-- Refresh 按鈕 -->
             <button @click="handleRefresh" :disabled="assetStore.isLoading"
               class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-cyan-500/50 disabled:border-slate-800 shadow-lg hover:shadow-cyan-500/20 overflow-hidden">
-              <!-- 發光效果 -->
               <div
                 class="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               </div>
@@ -172,7 +175,7 @@ onUnmounted(() => {
               </span>
             </button>
 
-            <!-- 🔥 Settings 按鈕 - 深灰 -->
+            <!-- Settings 按鈕 -->
             <button @click="showSettings = true"
               class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-slate-600 shadow-lg">
               <span class="flex items-center gap-2">
@@ -181,7 +184,7 @@ onUnmounted(() => {
               </span>
             </button>
 
-            <!-- 🔥 Lock 按鈕 - 暗紅 -->
+            <!-- Lock 按鈕 -->
             <button @click="handleLogout"
               class="group relative px-4 py-2 bg-slate-800 hover:bg-rose-950/50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-rose-800/50 shadow-lg hover:shadow-rose-900/30">
               <span class="flex items-center gap-2">
@@ -197,7 +200,7 @@ onUnmounted(() => {
     <!-- Main Content -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
-      <!-- 🔥 Filter Bar - 深色科技感 -->
+      <!-- Filter Bar - Registry 驅動 -->
       <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 border border-slate-700/50 shadow-xl">
         <h3 class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">資料來源篩選</h3>
         <div class="flex flex-wrap gap-2">
@@ -209,7 +212,6 @@ onUnmounted(() => {
               ? 'bg-slate-700 border-cyan-500/50 text-cyan-100 shadow-lg shadow-cyan-500/20'
               : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
           ]">
-            <!-- 發光效果 -->
             <div v-if="isAllSelected"
               class="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-cyan-500/5 to-transparent"></div>
             <span class="relative flex items-center gap-2">
@@ -221,77 +223,33 @@ onUnmounted(() => {
           <!-- 分隔線 -->
           <div class="w-px bg-slate-700 self-stretch mx-1"></div>
 
-          <!-- Binance CEX -->
-          <button @click="toggleSource('binance_cex')" :class="[
-            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
-            sourceFilters.binance_cex
-              ? 'bg-slate-700 border-amber-500/50 text-amber-100 shadow-lg shadow-amber-500/20'
-              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
-          ]">
-            <div v-if="sourceFilters.binance_cex"
-              class="absolute inset-0 bg-gradient-to-r from-amber-500/10 via-amber-500/5 to-transparent"></div>
+          <!-- 動態來源按鈕 -->
+          <button
+            v-for="source in SOURCE_REGISTRY"
+            :key="source.id"
+            @click="toggleSource(source.id)"
+            :class="[
+              'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
+              sourceFilters[source.id]
+                ? source.activeClasses
+                : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
+            ]"
+          >
+            <div v-if="sourceFilters[source.id]"
+              :class="['absolute inset-0', source.activeGlowClass]"></div>
             <span class="relative flex items-center gap-2">
-              <span :class="sourceFilters.binance_cex ? 'text-amber-400' : 'text-slate-500'">{{
-                sourceFilters.binance_cex ? '✓' : '○' }}</span>
-              <span>Binance CEX</span>
-            </span>
-          </button>
-
-          <!-- OKX CEX -->
-          <button @click="toggleSource('okx_cex')" :class="[
-            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
-            sourceFilters.okx_cex
-              ? 'bg-slate-700 border-blue-500/50 text-blue-100 shadow-lg shadow-blue-500/20'
-              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
-          ]">
-            <div v-if="sourceFilters.okx_cex"
-              class="absolute inset-0 bg-gradient-to-r from-blue-500/10 via-blue-500/5 to-transparent"></div>
-            <span class="relative flex items-center gap-2">
-              <span :class="sourceFilters.okx_cex ? 'text-blue-400' : 'text-slate-500'">{{ sourceFilters.okx_cex ? '✓' :
-                '○' }}</span>
-              <span>OKX CEX</span>
-            </span>
-          </button>
-
-          <!-- Binance Hot -->
-          <button @click="toggleSource('binance_hot')" :class="[
-            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
-            sourceFilters.binance_hot
-              ? 'bg-slate-700 border-orange-500/50 text-orange-100 shadow-lg shadow-orange-500/20'
-              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
-          ]">
-            <div v-if="sourceFilters.binance_hot"
-              class="absolute inset-0 bg-gradient-to-r from-orange-500/10 via-orange-500/5 to-transparent"></div>
-            <span class="relative flex items-center gap-2">
-              <span :class="sourceFilters.binance_hot ? 'text-orange-400' : 'text-slate-500'">{{
-                sourceFilters.binance_hot ? '✓' : '○' }}</span>
-              <span>Binance Hot</span>
-            </span>
-          </button>
-
-          <!-- OKX Hot -->
-          <button @click="toggleSource('okx_hot')" :class="[
-            'group relative px-4 py-2 rounded-lg font-medium text-sm transition-all duration-300 border overflow-hidden',
-            sourceFilters.okx_hot
-              ? 'bg-slate-700 border-teal-500/50 text-teal-100 shadow-lg shadow-teal-500/20'
-              : 'bg-slate-900/50 border-slate-700 text-slate-400 hover:border-slate-600 hover:bg-slate-800/50'
-          ]">
-            <div v-if="sourceFilters.okx_hot"
-              class="absolute inset-0 bg-gradient-to-r from-teal-500/10 via-teal-500/5 to-transparent"></div>
-            <span class="relative flex items-center gap-2">
-              <span :class="sourceFilters.okx_hot ? 'text-teal-400' : 'text-slate-500'">{{ sourceFilters.okx_hot ? '✓' :
-                '○' }}</span>
-              <span>OKX Hot</span>
+              <span :class="sourceFilters[source.id] ? source.activeTextClass : 'text-slate-500'">{{
+                sourceFilters[source.id] ? '✓' : '○' }}</span>
+              <span>{{ source.label }}</span>
             </span>
           </button>
 
         </div>
       </div>
 
-      <!-- Total Balance Card - 🔥 藍紫神秘漸層 -->
+      <!-- Total Balance Card -->
       <div
         class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950/40 to-violet-950/30 rounded-xl p-8 shadow-2xl border border-indigo-500/20">
-        <!-- 背景裝飾 -->
         <div
           class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 rounded-full blur-3xl">
         </div>
@@ -299,7 +257,6 @@ onUnmounted(() => {
           class="absolute bottom-0 left-0 w-64 h-64 bg-gradient-to-tr from-blue-500/5 to-purple-500/10 rounded-full blur-3xl">
         </div>
 
-        <!-- 內容 -->
         <div class="relative z-10">
           <p class="text-sm text-indigo-300/80 mb-2 flex items-center gap-2">
             <span class="w-2 h-2 bg-indigo-400 rounded-full animate-pulse"></span>
@@ -401,9 +358,14 @@ onUnmounted(() => {
 
               <!-- 來源列表 -->
               <div class="space-y-1">
-                <div v-for="source in summary.sources.filter(s => s.amount > DUST_THRESHOLD)" :key="source.source"
+                <div v-for="source in summary.sources.filter(s => s.amount > DUST_THRESHOLD)" :key="`${source.source}-${source.accountType}`"
                   class="flex justify-between items-center text-xs pl-8">
-                  <span class="text-slate-500">{{ formatSource(source.source) }}</span>
+                  <span class="text-slate-500">
+                    {{ formatSource(source.source) }}
+                    <span v-if="source.accountType" class="text-slate-600">
+                      · {{ formatAccountType(source.source, source.accountType) }}
+                    </span>
+                  </span>
                   <span class="text-slate-400 font-mono">{{ source.amount.toFixed(6) }}</span>
                 </div>
               </div>
