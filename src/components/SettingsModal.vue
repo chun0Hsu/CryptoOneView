@@ -301,7 +301,7 @@ function handleClose() {
 
                 <div>
                   <label class="block text-sm font-semibold text-slate-300 mb-2">錢包地址</label>
-                  <input v-model="walletForm.address" type="text" placeholder="請輸入錢包地址"
+                  <input v-model="walletForm.address" type="text" :placeholder="selectedChainConfig?.inputHint || '請輸入錢包地址'"
                     class="w-full px-4 py-3 bg-slate-800/50 border border-slate-700 rounded-lg text-slate-200 placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500/50 transition font-mono text-sm" />
                 </div>
 

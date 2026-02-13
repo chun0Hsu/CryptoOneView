@@ -10,6 +10,9 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@scure/base": "^2.0.0",
+    "@scure/bip32": "^2.0.1",
+    "bs58check": "^4.0.0",
     "chart.js": "^4.5.1",
     "crypto-js": "^4.2.0",
     "pinia": "^3.0.4",

@@ -5,6 +5,7 @@ export interface ChainConfig {
   requiresApiKey: boolean
   apiKeyLabel?: string
   apiKeyUrl?: string
+  inputHint?: string
 }
 
 export const CHAIN_REGISTRY: ChainConfig[] = [
@@ -13,6 +14,7 @@ export const CHAIN_REGISTRY: ChainConfig[] = [
     name: 'Bitcoin',
     symbol: 'BTC',
     requiresApiKey: false,
+    inputHint: '輸入 xpub / ypub / zpub 或單一地址',
   },
   {
     id: 'ETH',
@@ -21,12 +23,14 @@ export const CHAIN_REGISTRY: ChainConfig[] = [
     requiresApiKey: false,
     apiKeyLabel: 'Etherscan API Key',
     apiKeyUrl: 'https://etherscan.io/myapikey',
+    inputHint: '輸入 ETH 地址 (0x...)',
   },
   {
     id: 'ADA',
     name: 'Cardano',
     symbol: 'ADA',
     requiresApiKey: false,
+    inputHint: '輸入 stake address (stake1...) 或單一地址 (addr1...)',
   },
 ]
 
