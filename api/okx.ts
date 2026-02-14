@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import crypto from 'crypto'
+import { setCorsHeaders, sanitizeErrorMessage } from './_cors.js'
 
 interface RequestBody {
   apiKey: string
@@ -135,10 +136,7 @@ const handlers: Record<string, (apiKey: string, secret: string, passphrase: stri
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  setCorsHeaders(req, res)
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
@@ -165,11 +163,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ balances })
     } catch (error: any) {
       // 非阻塞：回傳 200 但帶 error
-      console.warn(`OKX ${type} fetch failed:`, error.message)
-      return res.status(200).json({ balances: [], error: error.message })
+      const msg = sanitizeErrorMessage(error.message || '')
+      console.warn(`OKX ${type} fetch failed:`, msg)
+      return res.status(200).json({ balances: [], error: msg })
     }
   } catch (error: any) {
     console.error('OKX API handler error:', error)
-    return res.status(500).json({ error: error.message || 'Internal server error' })
+    return res.status(500).json({ error: 'Internal server error' })
   }
 }

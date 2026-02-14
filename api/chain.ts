@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node'
 import crypto from 'crypto'
+import { setCorsHeaders, sanitizeErrorMessage } from './_cors.js'
 import _bs58check from 'bs58check'
 import { HDKey } from '@scure/bip32'
 import { bech32 } from '@scure/base'
@@ -264,10 +265,7 @@ const handlers: Record<string, (address: string, apiKey?: string) => Promise<Cha
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Origin', '*')
-  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type')
+  setCorsHeaders(req, res)
 
   if (req.method === 'OPTIONS') {
     return res.status(200).end()
@@ -294,9 +292,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(200).json({ success: true, ...result })
     } catch (error: any) {
       // 預期錯誤（地址無效、API 限流等）
-      const msg = (error.message || '').replace(/apikey=[^&\s]+/gi, 'apikey=***')
+      const msg = sanitizeErrorMessage(error.message || '')
       console.warn(`Chain ${chain} fetch failed:`, msg)
-      return res.status(200).json({ success: false, error: error.message })
+      return res.status(200).json({ success: false, error: msg })
     }
   } catch (error: any) {
     // 非預期錯誤（請求格式錯誤等）
