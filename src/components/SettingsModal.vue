@@ -162,7 +162,7 @@ function handleClose() {
 
         <!-- Header -->
         <div
-          class="relative z-10 flex justify-between items-center px-6 py-4 border-b border-slate-700/50 bg-slate-900/30 backdrop-blur-sm">
+          class="relative z-10 flex justify-between items-center px-4 py-3 sm:px-6 sm:py-4 border-b border-slate-700/50 bg-slate-900/30 backdrop-blur-sm">
           <h2 class="text-2xl font-bold bg-gradient-to-r from-slate-200 to-slate-400 bg-clip-text text-transparent">
             ⚙️ 設定
           </h2>
@@ -175,7 +175,7 @@ function handleClose() {
         <!-- Tabs -->
         <div class="relative z-10 flex border-b border-slate-700/50 bg-slate-900/20 backdrop-blur-sm">
           <button @click="activeTab = 'exchange'" :class="[
-            'flex-1 px-6 py-4 font-semibold transition-all duration-300 relative',
+            'flex-1 px-4 py-3 sm:px-6 sm:py-4 font-semibold transition-all duration-300 relative',
             activeTab === 'exchange'
               ? 'text-indigo-300 bg-slate-800/50'
               : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
@@ -186,7 +186,7 @@ function handleClose() {
             </div>
           </button>
           <button @click="activeTab = 'wallet'" :class="[
-            'flex-1 px-6 py-4 font-semibold transition-all duration-300 relative',
+            'flex-1 px-4 py-3 sm:px-6 sm:py-4 font-semibold transition-all duration-300 relative',
             activeTab === 'wallet'
               ? 'text-indigo-300 bg-slate-800/50'
               : 'text-slate-400 hover:text-slate-300 hover:bg-slate-800/30'
@@ -199,13 +199,13 @@ function handleClose() {
         </div>
 
         <!-- Content -->
-        <div class="relative z-10 p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div class="relative z-10 p-4 sm:p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
 
           <!-- 交易所 Tab -->
           <div v-show="activeTab === 'exchange'" class="space-y-6">
 
             <!-- 新增表單 -->
-            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700/50">
               <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
                 <span class="w-2 h-2 bg-indigo-400 rounded-full"></span>
                 新增交易所 API Key
@@ -265,7 +265,7 @@ function handleClose() {
                   </div>
                 </div>
                 <button @click="handleRemoveExchange(cred.exchange)"
-                  class="px-3 py-2 bg-rose-950/30 hover:bg-rose-950/50 text-rose-300 rounded-lg text-sm font-semibold transition border border-rose-800/30 hover:border-rose-700/50 opacity-0 group-hover:opacity-100">
+                  class="px-3 py-2 bg-rose-950/30 hover:bg-rose-950/50 text-rose-300 rounded-lg text-sm font-semibold transition border border-rose-800/30 hover:border-rose-700/50 sm:opacity-0 sm:group-hover:opacity-100">
                   🗑️ 刪除
                 </button>
               </div>
@@ -276,7 +276,7 @@ function handleClose() {
           <div v-show="activeTab === 'wallet'" class="space-y-6">
 
             <!-- 新增表單 -->
-            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50">
+            <div class="bg-slate-900/30 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700/50">
               <h3 class="text-lg font-bold text-slate-200 mb-4 flex items-center gap-2">
                 <span class="w-2 h-2 bg-indigo-400 rounded-full"></span>
                 新增錢包地址
@@ -354,7 +354,7 @@ function handleClose() {
                     </span>
                   </div>
                   <button @click="handleRemoveWallet(addr.id)"
-                    class="px-3 py-1 bg-rose-950/30 hover:bg-rose-950/50 text-rose-300 text-sm rounded transition border border-rose-800/30 hover:border-rose-700/50 opacity-0 group-hover:opacity-100">
+                    class="px-3 py-1 bg-rose-950/30 hover:bg-rose-950/50 text-rose-300 text-sm rounded transition border border-rose-800/30 hover:border-rose-700/50 sm:opacity-0 sm:group-hover:opacity-100">
                     🗑️ 刪除
                   </button>
                 </div>

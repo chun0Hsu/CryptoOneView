@@ -75,14 +75,30 @@ onMounted(async () => {
 
     <!-- 登入卡片 -->
     <div
-      class="relative z-10 bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl p-8 w-full max-w-md border border-slate-700/50">
+      class="relative z-10 bg-slate-800/50 backdrop-blur-xl rounded-2xl shadow-2xl p-5 sm:p-8 w-full max-w-md border border-slate-700/50">
 
       <!-- Logo -->
       <div class="text-center mb-8">
         <div
           class="w-16 h-16 mx-auto bg-gradient-to-br from-slate-700 to-slate-900 rounded-xl flex items-center justify-center mb-4 border border-slate-600/50 shadow-lg shadow-indigo-500/20">
-          <span
-            class="text-3xl font-bold bg-gradient-to-br from-indigo-200 to-violet-300 bg-clip-text text-transparent">C</span>
+          <svg width="36" height="36" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- 外圈：代表加密貨幣/區塊鏈的六邊形 -->
+            <path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" stroke="url(#loginGrad1)" stroke-width="1.5" fill="none" />
+            <!-- 內部：眼睛造型代表 OneView -->
+            <path d="M8 18C8 18 12 12 18 12C24 12 28 18 28 18C28 18 24 24 18 24C12 24 8 18 8 18Z" stroke="url(#loginGrad2)" stroke-width="1.5" fill="none" />
+            <!-- 瞳孔 -->
+            <circle cx="18" cy="18" r="3.5" fill="url(#loginGrad2)" />
+            <defs>
+              <linearGradient id="loginGrad1" x1="4" y1="2" x2="32" y2="34">
+                <stop offset="0%" stop-color="#a5b4fc" />
+                <stop offset="100%" stop-color="#c4b5fd" />
+              </linearGradient>
+              <linearGradient id="loginGrad2" x1="8" y1="12" x2="28" y2="24">
+                <stop offset="0%" stop-color="#c7d2fe" />
+                <stop offset="100%" stop-color="#ddd6fe" />
+              </linearGradient>
+            </defs>
+          </svg>
         </div>
         <h1 class="text-2xl font-bold bg-gradient-to-r from-slate-200 to-slate-400 bg-clip-text text-transparent mb-1">
           CryptoOneView

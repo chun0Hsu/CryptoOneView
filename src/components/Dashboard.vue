@@ -134,7 +134,10 @@ const activityEvents = ['mousedown', 'keydown', 'scroll', 'touchstart']
 
 onMounted(() => {
   activityEvents.forEach(event => {
-    window.addEventListener(event, handleUserActivity)
+    const options = (event === 'scroll' || event === 'touchstart')
+      ? { passive: true } as const
+      : undefined
+    window.addEventListener(event, handleUserActivity, options)
   })
 })
 
@@ -154,42 +157,56 @@ onUnmounted(() => {
         <div class="flex justify-between items-center">
           <div class="flex items-center space-x-3">
             <div
-              class="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center font-bold text-xl border border-slate-600/50 shadow-lg">
-              C
+              class="w-10 h-10 bg-gradient-to-br from-slate-700 to-slate-900 rounded-lg flex items-center justify-center border border-slate-600/50 shadow-lg">
+              <svg width="24" height="24" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 2L32 10V26L18 34L4 26V10L18 2Z" stroke="url(#headerGrad1)" stroke-width="1.5" fill="none" />
+                <path d="M8 18C8 18 12 12 18 12C24 12 28 18 28 18C28 18 24 24 18 24C12 24 8 18 8 18Z" stroke="url(#headerGrad2)" stroke-width="1.5" fill="none" />
+                <circle cx="18" cy="18" r="3.5" fill="url(#headerGrad2)" />
+                <defs>
+                  <linearGradient id="headerGrad1" x1="4" y1="2" x2="32" y2="34">
+                    <stop offset="0%" stop-color="#a5b4fc" />
+                    <stop offset="100%" stop-color="#c4b5fd" />
+                  </linearGradient>
+                  <linearGradient id="headerGrad2" x1="8" y1="12" x2="28" y2="24">
+                    <stop offset="0%" stop-color="#c7d2fe" />
+                    <stop offset="100%" stop-color="#ddd6fe" />
+                  </linearGradient>
+                </defs>
+              </svg>
             </div>
-            <h1 class="text-2xl font-bold bg-gradient-to-r from-slate-200 to-slate-400 bg-clip-text text-transparent">
+            <h1 class="text-lg sm:text-2xl font-bold bg-gradient-to-r from-slate-200 to-slate-400 bg-clip-text text-transparent">
               CryptoOneView
             </h1>
           </div>
 
-          <div class="flex items-center space-x-3">
+          <div class="flex items-center space-x-2 sm:space-x-3">
             <!-- Refresh 按鈕 -->
             <button @click="handleRefresh" :disabled="assetStore.isLoading"
-              class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-cyan-500/50 disabled:border-slate-800 shadow-lg hover:shadow-cyan-500/20 overflow-hidden">
+              class="group relative px-2 sm:px-4 py-2 bg-slate-800 hover:bg-slate-700 disabled:bg-slate-900 disabled:opacity-50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-cyan-500/50 disabled:border-slate-800 shadow-lg hover:shadow-cyan-500/20 overflow-hidden">
               <div
                 class="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/10 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
               </div>
               <span class="relative flex items-center gap-2">
                 <span class="text-cyan-400">{{ assetStore.isLoading ? '⟳' : '↻' }}</span>
-                <span class="text-slate-200">{{ assetStore.isLoading ? '更新中...' : 'Refresh' }}</span>
+                <span class="hidden sm:inline text-slate-200">{{ assetStore.isLoading ? '更新中...' : 'Refresh' }}</span>
               </span>
             </button>
 
             <!-- Settings 按鈕 -->
             <button @click="showSettings = true"
-              class="group relative px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-slate-600 shadow-lg">
+              class="group relative px-2 sm:px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-slate-600 shadow-lg">
               <span class="flex items-center gap-2">
                 <span class="text-slate-400 group-hover:text-slate-300">⚙</span>
-                <span class="text-slate-200">Settings</span>
+                <span class="hidden sm:inline text-slate-200">Settings</span>
               </span>
             </button>
 
             <!-- Lock 按鈕 -->
             <button @click="handleLogout"
-              class="group relative px-4 py-2 bg-slate-800 hover:bg-rose-950/50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-rose-800/50 shadow-lg hover:shadow-rose-900/30">
+              class="group relative px-2 sm:px-4 py-2 bg-slate-800 hover:bg-rose-950/50 rounded-lg font-semibold text-sm transition-all duration-300 border border-slate-700 hover:border-rose-800/50 shadow-lg hover:shadow-rose-900/30">
               <span class="flex items-center gap-2">
                 <span class="text-rose-400 group-hover:text-rose-300">🔒</span>
-                <span class="text-slate-200 group-hover:text-rose-200">Lock</span>
+                <span class="hidden sm:inline text-slate-200 group-hover:text-rose-200">Lock</span>
               </span>
             </button>
           </div>
@@ -249,7 +266,7 @@ onUnmounted(() => {
 
       <!-- Total Balance Card -->
       <div
-        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950/40 to-violet-950/30 rounded-xl p-8 shadow-2xl border border-indigo-500/20">
+        class="relative overflow-hidden bg-gradient-to-br from-slate-900 via-indigo-950/40 to-violet-950/30 rounded-xl p-4 sm:p-6 md:p-8 shadow-2xl border border-indigo-500/20">
         <div
           class="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-indigo-500/10 to-violet-500/5 rounded-full blur-3xl">
         </div>
@@ -263,7 +280,7 @@ onUnmounted(() => {
             總資產價值
           </p>
           <p
-            class="text-5xl font-bold mb-4 bg-gradient-to-r from-indigo-200 via-violet-200 to-purple-200 bg-clip-text text-transparent">
+            class="text-2xl sm:text-4xl md:text-5xl font-bold mb-4 bg-gradient-to-r from-indigo-200 via-violet-200 to-purple-200 bg-clip-text text-transparent">
             ${{ filteredTotalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
           </p>
           <p v-if="assetStore.lastUpdated" class="text-sm text-slate-400">
@@ -329,20 +346,20 @@ onUnmounted(() => {
       </div>
 
       <!-- Assets Grid -->
-      <div class="grid lg:grid-cols-2 gap-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
         <!-- Asset Allocation -->
-        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700/50 shadow-xl">
           <h3 class="text-lg font-bold mb-4 text-slate-200">資產配置</h3>
           <AssetChart :assets="filteredAssetsWithPercentage" />
         </div>
 
         <!-- 來源分布 -->
-        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-6 border border-slate-700/50 shadow-xl">
+        <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl p-4 sm:p-6 border border-slate-700/50 shadow-xl">
           <h3 class="text-lg font-bold mb-4 text-slate-200">來源分布</h3>
 
           <div
-            class="h-64 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
+            class="max-h-64 overflow-y-auto pr-2 space-y-3 scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-900">
 
             <div v-for="summary in filteredAssetsWithPercentage" :key="summary.symbol"
               class="bg-slate-900/50 rounded-lg p-3 hover:bg-slate-900/80 transition border border-slate-700/30">
@@ -388,41 +405,41 @@ onUnmounted(() => {
 
       <!-- Full Asset Table -->
       <div class="bg-slate-800/50 backdrop-blur-sm rounded-xl overflow-hidden border border-slate-700/50 shadow-xl">
-        <div class="px-6 py-4 border-b border-slate-700/50">
+        <div class="px-3 py-2 sm:px-6 sm:py-4 border-b border-slate-700/50">
           <h3 class="text-lg font-bold text-slate-200">所有資產</h3>
         </div>
         <div class="overflow-x-auto">
           <table class="w-full">
             <thead class="bg-slate-900/50">
               <tr>
-                <th class="px-6 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">資產</th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">數量</th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">單價 (USD)
+                <th class="px-3 py-2 sm:px-6 sm:py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider">資產</th>
+                <th class="px-3 py-2 sm:px-6 sm:py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">數量</th>
+                <th class="px-3 py-2 sm:px-6 sm:py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider hidden sm:table-cell">單價 (USD)
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">價值 (USD)
+                <th class="px-3 py-2 sm:px-6 sm:py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">價值 (USD)
                 </th>
-                <th class="px-6 py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">佔比</th>
+                <th class="px-3 py-2 sm:px-6 sm:py-3 text-right text-xs font-semibold text-slate-400 uppercase tracking-wider">佔比</th>
               </tr>
             </thead>
             <tbody class="divide-y divide-slate-700/30">
               <tr v-for="summary in filteredAssetsWithPercentage" :key="summary.symbol"
                 class="hover:bg-slate-900/30 transition">
-                <td class="px-6 py-4 whitespace-nowrap">
+                <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap">
                   <div class="flex items-center space-x-3">
                     <CoinIcon :symbol="summary.symbol" size="sm" />
                     <span class="font-semibold text-slate-200">{{ summary.symbol }}</span>
                   </div>
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right font-mono text-sm text-slate-300">
+                <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right font-mono text-sm text-slate-300 hidden sm:table-cell">
                   {{ summary.totalAmount.toFixed(8) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right text-slate-300">
+                <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right text-slate-300 hidden sm:table-cell">
                   ${{ summary.priceUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right font-semibold text-slate-200">
+                <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right font-semibold text-slate-200">
                   ${{ summary.valueUSD.toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
                 </td>
-                <td class="px-6 py-4 whitespace-nowrap text-right">
+                <td class="px-3 py-2 sm:px-6 sm:py-4 whitespace-nowrap text-right">
                   <span
                     class="px-2 py-1 bg-cyan-500/10 text-cyan-300 rounded text-sm font-semibold border border-cyan-500/20">
                     {{ summary.percentage.toFixed(2) }}%

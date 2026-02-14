@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed } from 'vue'
+import { computed, ref, onMounted, onUnmounted } from 'vue'
 import { Doughnut } from 'vue-chartjs'
 import {
   Chart as ChartJS,
@@ -16,6 +16,24 @@ ChartJS.register(ArcElement, Tooltip, Legend)
 const props = defineProps<{
   assets: AssetSummary[]
 }>()
+
+// 響應式 legend position
+const isMobile = ref(false)
+let resizeTimer: ReturnType<typeof setTimeout> | null = null
+function handleResize() {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = setTimeout(() => {
+    isMobile.value = window.innerWidth < 640
+  }, 150)
+}
+onMounted(() => {
+  isMobile.value = window.innerWidth < 640
+  window.addEventListener('resize', handleResize)
+})
+onUnmounted(() => {
+  window.removeEventListener('resize', handleResize)
+  if (resizeTimer) clearTimeout(resizeTimer)
+})
 
 // 🔥 擴充顏色配置（支援更多幣種）
 const colorMap: Record<string, string> = {
@@ -85,12 +103,12 @@ const chartData = computed(() => {
 })
 
 // Chart.js 配置
-const chartOptions: ChartOptions<'doughnut'> = {
+const chartOptions = computed<ChartOptions<'doughnut'>>(() => ({
   responsive: true,
   maintainAspectRatio: false,
   plugins: {
     legend: {
-      position: 'right',
+      position: isMobile.value ? 'bottom' : 'right',
       labels: {
         color: '#F3F4F6',
         padding: 12,
@@ -141,7 +159,7 @@ const chartOptions: ChartOptions<'doughnut'> = {
     }
   },
   cutout: '65%'
-}
+}))
 </script>
 
 <template>
@@ -154,7 +172,7 @@ const chartOptions: ChartOptions<'doughnut'> = {
       </div>
     </div>
 
-    <div v-else class="h-64">
+    <div v-else class="h-48 sm:h-64">
       <Doughnut :data="chartData" :options="chartOptions" />
     </div>
   </div>

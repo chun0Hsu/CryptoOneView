@@ -42,10 +42,10 @@ const colorMap = {
 </script>
 
 <template>
-  <div class="fixed top-4 right-4 z-[100] space-y-2">
+  <div class="fixed top-16 sm:top-4 right-4 z-[100] space-y-2">
     <TransitionGroup name="toast">
       <div v-for="msg in messages" :key="msg.id" :class="[
-        'min-w-[300px] max-w-md p-4 rounded-lg shadow-2xl border backdrop-blur-sm',
+        'max-w-[calc(100vw-2rem)] sm:min-w-[300px] sm:max-w-md p-4 rounded-lg shadow-2xl border backdrop-blur-sm',
         colorMap[msg.type]
       ]">
         <div class="flex items-start space-x-3">
